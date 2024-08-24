@@ -1,0 +1,7 @@
+{
+    "watch": ["src/**/*", "tsconfig.json"],
+    "ext": ".ts,.js,.tsx",
+    "ignore": [],
+    "delay": "3",
+    "exec": "npm run build && npm run start"
+}
