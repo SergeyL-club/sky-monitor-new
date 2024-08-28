@@ -210,6 +210,42 @@ class WorkerBrowser {
     return page;
   };
 
+  setPageDefault = async (reload: boolean = false) => {
+    // set page deals
+    loggerBrowser.info(`Создание основной страницы`);
+    const url = 'https://skycrypto.me/deals';
+    let page = await this.initPage(url);
+    if (!page) {
+      loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
+      return false;
+    }
+
+    if (reload) {
+      // close 0 page
+      if (this.browser) {
+        loggerBrowser.log('Удаляем ненужную страницу');
+        const pagesNull = await this.browser.pages();
+        if (pagesNull.length > 1) await pagesNull[0].close();
+      }
+      this.deals = null;
+    }
+
+    // check auth
+    page = await this.checkAuth(page, url);
+    if (!page) {
+      loggerBrowser.error(new Error('Ошибка авторизации page'), 'Не удалось провести авторизацию page deals');
+      return false;
+    }
+
+    // save page
+    loggerBrowser.log('Сохранияем адрес ссылки на сделки');
+    this.deals = page;
+    if (reload) await this.updateKeys(page);
+
+    this.isReAuth = false;
+    return page;
+  };
+
   initBrowser = async (headless?: boolean) => {
     try {
       loggerBrowser.info('Установка конфигурации браузера');
@@ -223,30 +259,13 @@ class WorkerBrowser {
       loggerBrowser.info(`Создание браузера`);
       this.browser = await puppeteerExtra.launch(params);
 
-      // set page deals
-      loggerBrowser.info(`Создание основной страницы`);
-      const url = 'https://skycrypto.me/deals';
-      let page = await this.initPage(url);
-      if (!page) {
-        loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
-        return false;
-      }
-
-      // check auth
-      page = await this.checkAuth(page, url);
-      if (!page) {
-        loggerBrowser.error(new Error('Ошибка авторизации page'), 'Не удалось провести авторизацию page deals');
-        return false;
-      }
+      // set page
+      await this.setPageDefault();
 
       // close 0 page
       loggerBrowser.log('Удаляем ненужную страницу');
       const pageNull = (await this.browser.pages())[0];
       await pageNull.close();
-
-      // save page
-      loggerBrowser.log('Сохранияем адрес ссылки на сделки');
-      this.deals = page;
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
@@ -345,7 +364,6 @@ class WorkerBrowser {
       if (!(await this.auth(localPage))) return null;
       loggerBrowser.log(`Переходит на нужную ссылку (${page.url()}, ${url})`);
       await this.goto(localPage, url);
-      this.isReAuth = false;
     }
 
     loggerBrowser.log(`Завершили проверку авторизации (${page.url()})`);
@@ -457,25 +475,25 @@ class WorkerBrowser {
     });
 
   evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
+    const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
-    // проверяем page
-    if (page) this.injectStatic(page);
-    const localPage = page ?? this.deals;
-    if (!localPage) {
-      loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
-      return null;
-    }
 
     // проверка регулярок
     let localCode = `${code}`;
     loggerBrowser.log('Поиск регулярок и их замена');
     if (localCode.includes('[authKey]')) localCode = localCode.split('[authKey]').join(`${this.authKey}`);
 
-    // делаем запрос и отдаем ответ
-    loggerBrowser.log(`Производим запрос (${localCode})`);
-    const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     try {
-      console.log(localCode);
+      // проверяем page
+      if (page) this.injectStatic(page);
+      const localPage = page ?? this.deals;
+      if (!localPage) {
+        loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
+        throw new Error('401, Unauthorized, page null');
+      }
+
+      // делаем запрос и отдаем ответ
+      loggerBrowser.log(`Производим запрос (${localCode})`);
       const result = await localPage.evaluate(localCode);
 
       loggerBrowser.log('Запрос прошёл успешно, отправляем ответ');
@@ -484,6 +502,16 @@ class WorkerBrowser {
       loggerBrowser.error(error);
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
+        if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
+          // set page
+          const nowPage = await this.setPageDefault(true);
+          if (nowPage === false) {
+            return null;
+          }
+          return await this.evalute<Type>({ page: nowPage, code }, cnt + 1);
+        }
+
+        await this.waitReAuth();
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
