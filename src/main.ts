@@ -106,7 +106,6 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       const isLimit = el.limit_to >= lot.limit_from;
       const isMinCurse = el.rate >= minCurse;
       const isIgnore = !ignores.find((ignore) => ignore === `/u${el.user.nickname}`);
-      console.log(el.user.nickname, isVerif, isLimit, isMinCurse, isIgnore);
       return isIgnore && isVerif && isLimit && isMinCurse;
     });
 
@@ -131,7 +130,6 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
     const nextRate = candidate.rate + fixPerc;
     const oldRate = lot.rate;
-    console.log(nextRate, oldRate);
     if (oldRate !== nextRate) {
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
       const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
