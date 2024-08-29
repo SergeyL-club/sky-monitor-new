@@ -124,13 +124,12 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
 
       const perc = Math.floor((rate.rate / 100) * minPerc);
       const nextRate = rate.rate + perc;
-      const oldRate = await redis.getCurse(lot.id);
+      const oldRate = lot.rate;
       if (oldRate !== nextRate) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
         const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
         if (isSet) {
           logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
-          await redis.setCurse(lot.id, nextRate);
         } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
       }
       logger.log(`Обработка заявки ${lot.id} завершена`);
@@ -140,14 +139,13 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     const candidate = candidates[0];
     const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
     const nextRate = candidate.rate + fixPerc;
-    const oldRate = await redis.getCurse(lot.id);
+    const oldRate = lot.rate;
     console.log(nextRate, oldRate);
     if (oldRate !== nextRate) {
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
       const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
       if (isSet) {
         logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
-        await redis.setCurse(lot.id, nextRate);
       } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
     }
     logger.log(`Обработка заявки ${lot.id} завершена`);
