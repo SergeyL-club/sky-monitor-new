@@ -86,6 +86,7 @@ class WorkerServer {
     this.fastify.get(`/`, (request, reply) => {
       const query: RequestQuery = request.query as RequestQuery;
       const keys = Object.keys(this.listen);
+      if ('deal_process' in query) return reply.status(200).send('ok');
       if ('command' in query)
         for (let indexListen = 0; indexListen < keys.length; indexListen++) {
           const callback = this.listen[keys[indexListen]];
