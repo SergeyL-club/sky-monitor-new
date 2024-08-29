@@ -3,9 +3,9 @@ export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
 // конфиг telegram
 export const TG_SESSION_API: string =
-  '1AgAOMTQ5LjE1NC4xNjcuNDEBu0VTG2XgB6sZ05zN0+Czpd7TFOFKEm2d0hbK7WSx2h6Z3N/rkQiijhoRtNSwh7Aba/RkLl/lBv3fh6B1YS0YJSNlnHDhz8d5+bEpm0/ObqansEywUwD5HlbEy/Pej+SLRAy2J0diMssP4rQF1UgAxHFYwoq+qLVJg2qdGM7MR8tAGexnQJ1zryp1jmq8iQLGYHPxvxeHASGkMwyOaBeqRp2Nd24qjPzht9JBk7m6jJhES7+jPFog8ko+97Kt4J08jMPCu9lf2aLeQv5s6VcWIb++Yaep40fxqx1607lE+6BHpi0uPU/u/BXX9ksx2nhmYbEk1IB16AFiarTJO8Hv8tU=';
-export const TG_HASH_API: string = '285f33b052b6546dc0affc1ba8af3c73';
-export const TG_ID_API: number = 23141011;
+  '1AgAOMTQ5LjE1NC4xNjcuNDEBu4jeq/onhol/UVqRWndECIervlNHBeAFE49l1OLHhe9+gtn67sSh4hEtyH62e0sZ8z9KGziBBVjNPF07Tv6Do3R6h/4hsskA0RGSgQf/8i7h03yNIlxxwSgYeFiE3vsqC/xtCm/n3tKkecK4to8IOFFrSmoxkPS+5xRW64qRgmPpI0Lf2VONHiKwqLrgv6YFdSlCfHCaXyLDmag1TEGxva89/LFWEVIck4wnB9Hqnv20yWDFpPf7806HQcgN6+3VZ4mfqUkyVPTQaBtU3ECEndQ2CRgxQK61svBPhelrF6eNKvwELl0/+ukQ9+PQRPRavdo78c0A+6o6q07rxSYMJcc=';
+export const TG_HASH_API: string = '03834fb0bea411df5b80c614370bd196';
+export const TG_ID_API: number = 21126497;
 export const TG_NAME_BOT: string = 'SKY BTC BANKER';
 
 // ид тг куда отправлять уведомления
@@ -15,8 +15,8 @@ export const TG_ID: number = 280212417;
 export const PORT: number = 13004;
 
 // майл и пороль для входа в sky
-export const EMAIL: string = 'nipici9440@acpeak.com';
-export const PASSWORD: string = 'Myipad132';
+export const EMAIL: string = 'mecherycova@yandex.ru';
+export const PASSWORD: string = 'Dar19810';
 
 // конфиг заявки
 export const IS_VERIFIED: boolean = true;
