@@ -6,7 +6,8 @@ export const TG_SESSION_API: string =
   '1AgAOMTQ5LjE1NC4xNjcuNDEBu4jeq/onhol/UVqRWndECIervlNHBeAFE49l1OLHhe9+gtn67sSh4hEtyH62e0sZ8z9KGziBBVjNPF07Tv6Do3R6h/4hsskA0RGSgQf/8i7h03yNIlxxwSgYeFiE3vsqC/xtCm/n3tKkecK4to8IOFFrSmoxkPS+5xRW64qRgmPpI0Lf2VONHiKwqLrgv6YFdSlCfHCaXyLDmag1TEGxva89/LFWEVIck4wnB9Hqnv20yWDFpPf7806HQcgN6+3VZ4mfqUkyVPTQaBtU3ECEndQ2CRgxQK61svBPhelrF6eNKvwELl0/+ukQ9+PQRPRavdo78c0A+6o6q07rxSYMJcc=';
 export const TG_HASH_API: string = '03834fb0bea411df5b80c614370bd196';
 export const TG_ID_API: number = 21126497;
-export const TG_NAME_BOT: string = 'SKY BTC BANKER';
+export const TG_NAME_BOT_BTC: string = 'SKY BTC BANKER';
+export const TG_NAME_BOT_USDT: string = 'SKY USDT BANKER';
 
 // ид тг куда отправлять уведомления
 export const TG_ID: number = 280212417;

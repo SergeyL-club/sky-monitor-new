@@ -130,7 +130,8 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       const oldRate = await redis.getCurse(lot.id);
       if (oldRate !== nextRate) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate);
+        const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
+        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
         if (isSet) {
           logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
           await redis.setCurse(lot.id, nextRate);
@@ -145,7 +146,8 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     const oldRate = await redis.getCurse(lot.id);
     if (oldRate !== nextRate) {
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate);
+      const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
+      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
       if (isSet) {
         logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
         await redis.setCurse(lot.id, nextRate);
