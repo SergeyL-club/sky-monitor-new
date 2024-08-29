@@ -57,6 +57,6 @@ export const CURSE_ARAGE_DELAY: number = 2000;
 
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
-export const DATA_PATH_REDIS_RATES_CACHE: string = `sky-monitor-new:reates`;
+export const DATA_PATH_REDIS_RATES_CACHE: string = `sky-monitor-new:rates`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;
