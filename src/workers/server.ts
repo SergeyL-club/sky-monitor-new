@@ -183,7 +183,7 @@ worker.on('menu', async (request, reply) => {
     if (typeof value === 'boolean') valueHtml = `<button id="${key}" onclick="setConfig('${key}', ${value})" data-value="${value}">${value ? 'Вкл' : 'Выкл'}</button>`;
     if (typeof value === 'string') valueHtml = `<input id="${key}" type="text" data-pre='${value}' value='${value}'/><button onclick="setConfig('${key}', '${value}')">Отправить</button>`;
     if (typeof value === 'number') valueHtml = `<input id="${key}" type="number" data-pre="${value}" value="${value}"/><button onclick="setConfig('${key}', ${value})">Отправить</button>`;
-    if (Array.isArray(value) && typeof value[0] === 'string')
+    if (Array.isArray(value))
       valueHtml = `<span>ArrayString-<input type="text" id="${key}_ARRAY" data-pre='${JSON.stringify(value)}' value='${JSON.stringify(value)}'/></span><button onclick="setConfig('${key}', [])">Отправить</button>`;
 
     html += `<span style='display:flex;gap:10px;margin-top:5px;flex-direction:row;'>Значение CONFIG[${key}]: ${valueHtml}</span>`;
