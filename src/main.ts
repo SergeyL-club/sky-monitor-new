@@ -87,7 +87,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   ];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
     const lot = lots[indexLot];
-    // if (!lot.is_active) continue;
+    if (!lot.is_active) continue;
     logger.info(`Заявка ${lot.id}, старт обработки`);
     logger.log(`Заявка ${lot.id}, поиск брокеров`);
     const brokerLot = brokers.find((el) => el.id === lot.broker_id);
