@@ -99,7 +99,7 @@ class TelegramAPI {
                             const handlerOk = async (update: Api.UpdateNewMessage) => {
                               const messageOk = update.message as Api.Message;
                               client.removeEventHandler(handlerOk, eventOk);
-                              if (messageOk.text.includes('Готово')) {
+                              if (messageOk.text.includes('Готово') || messageOk.text.includes('Заявка')) {
                                 await client.disconnect();
                                 resolve(true);
                               } else {
@@ -173,7 +173,7 @@ class TelegramAPI {
                             const handlerOk = async (update: Api.UpdateNewMessage) => {
                               const messageOk = update.message as Api.Message;
                               client.removeEventHandler(handlerOk, eventOk);
-                              if (messageOk.text.includes('Готово')) {
+                              if (messageOk.text.includes('Готово') || messageOk.text.includes('Заявка')) {
                                 await client.disconnect();
                                 resolve(true);
                               } else {
