@@ -78,7 +78,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   const market = (symbol: string, broker: string, currency: string, page: number) =>
     `getMarkets("[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
-  const [verif, ignores, minPerc, fixPerc] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'CURSE_FIX_PERC'])) as [boolean, string[], number, number];
+  const [verif, ignores, minPerc] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC'])) as [boolean, string[], number];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
     const lot = lots[indexLot];
@@ -137,6 +137,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     }
 
     const candidate = candidates[0];
+    const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
     const nextRate = candidate.rate + fixPerc;
     const oldRate = await redis.getCurse(lot.id);
     if (oldRate !== nextRate) {
