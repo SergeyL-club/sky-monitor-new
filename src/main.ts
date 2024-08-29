@@ -62,6 +62,9 @@ type Broker = {
 };
 
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
+  const evaluteTradeToggleFunc = `getCookie('LAST_SELL_TRADING_ACTIVE')`;
+  const isTrade = (await browser.evalute({ code: evaluteTradeToggleFunc })) as 'true' | 'false';
+  if (isTrade === 'false') return logger.log(`Начало итерации остановлено, т.к. трейд отключен`);
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
   const evaluteFuncLots = `getLots("[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
