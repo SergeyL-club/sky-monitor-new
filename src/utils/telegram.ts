@@ -7,6 +7,7 @@ import { Api, TelegramClient } from 'telegram';
 import loggerCore from './logger.js';
 import { NewMessage } from 'telegram/events/NewMessage.js';
 import { LogLevel } from 'telegram/extensions/Logger.js';
+import { delay } from './dateTime.js';
 
 class TelegramAPI {
   private queue: (() => Promise<void>)[];
@@ -156,57 +157,43 @@ class TelegramAPI {
                 client.getDialogs().then((dialogs) => {
                   const botDialog = dialogs.find((dialog) => dialog.isUser && dialog.name === botName);
                   if (botDialog?.entity) {
-                    const event = new NewMessage();
-                    const handler = async (update: Api.UpdateNewMessage) => {
-                      const message = update.message as Api.Message;
-                      client.removeEventHandler(handler, event);
-                      if (message.replyMarkup) {
-                        const btnLimit = (message.replyMarkup as Api.ReplyInlineMarkup).rows
+                    client.sendMessage(botDialog.entity, { message: adsIdPath }).then(async () => {
+                      const delayTg = (await redis.getConfig('TG_DELAY_MESSAGE')) as number;
+                      await delay(delayTg);
+                      const lastMessagesAds = await client.getMessages(botDialog.entity, { limit: 1 });
+                      if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes('Заявка')) {
+                        const btnLimit = (lastMessagesAds[0].replyMarkup as Api.ReplyInlineMarkup).rows
                           .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes('Курс')))
                           ?.buttons.find((btn) => btn.text.includes('Курс')) as Api.KeyboardButtonCallback;
-                        const eventLimit = new NewMessage();
-                        const handlerLimit = async (update: Api.UpdateNewMessage) => {
-                          const messageLimit = update.message as Api.Message;
-                          client.removeEventHandler(handlerLimit, eventLimit);
-                          if (messageLimit.text.includes('Введите новый курс')) {
-                            const eventOk = new NewMessage();
-                            const handlerOk = async (update: Api.UpdateNewMessage) => {
-                              const messageOk = update.message as Api.Message;
-                              client.removeEventHandler(handlerOk, eventOk);
-                              if (messageOk.text.includes('Готово') || messageOk.text.includes('Заявка')) {
-                                await client.disconnect();
-                                resolve(true);
-                              } else {
-                                await client.disconnect();
-                                resolve(false);
-                              }
-                            };
-
-                            client.addEventHandler(handlerOk, eventOk);
-                            await client.sendMessage(botDialog.entity!, { message: `${curse}` });
+                        await client.invoke(
+                          new Api.messages.GetBotCallbackAnswer({
+                            peer: botDialog.entity,
+                            msgId: lastMessagesAds[0].id,
+                            data: btnLimit.data,
+                          }),
+                        );
+                        await delay(delayTg);
+                        const lastMessagesCurse = await client.getMessages(botDialog.entity, { limit: 1 });
+                        if (lastMessagesCurse.length > 0 && lastMessagesCurse[0].text.includes('Введите новый курс')) {
+                          await client.sendMessage(botDialog.entity!, { message: `${curse}` });
+                          await delay(delayTg);
+                          const lastMessagesOk = await client.getMessages(botDialog.entity, { limit: 1 });
+                          if (lastMessagesOk.length > 0 && (lastMessagesOk[0].text.includes('Готово') || lastMessagesOk[0].text.includes('Заявка'))) {
+                            await client.disconnect();
+                            resolve(true);
                           } else {
                             await client.disconnect();
                             resolve(false);
                           }
-                        };
-
-                        client.addEventHandler(handlerLimit, eventLimit);
-                        if (!btnLimit) {
+                        } else {
                           await client.disconnect();
                           resolve(false);
                         }
-                        await client.invoke(
-                          new Api.messages.GetBotCallbackAnswer({
-                            peer: botDialog.entity,
-                            msgId: message.id,
-                            data: btnLimit.data,
-                          }),
-                        );
+                      } else {
+                        await client.disconnect();
+                        resolve(false);
                       }
-                    };
-                    client.addEventHandler(handler, event);
-
-                    Promise.resolve(client.sendMessage(botDialog.entity, { message: adsIdPath }));
+                    });
                   }
                 });
               } catch (error: unknown) {

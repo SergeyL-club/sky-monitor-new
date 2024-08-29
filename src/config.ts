@@ -8,6 +8,7 @@ export const TG_HASH_API: string = '03834fb0bea411df5b80c614370bd196';
 export const TG_ID_API: number = 21126497;
 export const TG_NAME_BOT_BTC: string = 'SKY BTC BANKER';
 export const TG_NAME_BOT_USDT: string = 'SKY USDT BANKER';
+export const TG_DELAY_MESSAGE: number = 5000;
 
 // ид тг куда отправлять уведомления
 export const TG_ID: number = 280212417;
