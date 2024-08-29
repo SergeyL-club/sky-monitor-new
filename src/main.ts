@@ -110,6 +110,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       const isLimit = el.limit_to >= lot.limit_from;
       const isMinCurse = el.rate >= minCurse;
       const isIgnore = !ignores.find((ignore) => ignore === `/u${el.user.nickname}`);
+      console.log(el.user.nickname, isVerif, isLimit, isMinCurse, isIgnore);
       return isIgnore && isVerif && isLimit && isMinCurse;
     });
 
