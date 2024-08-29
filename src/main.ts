@@ -87,9 +87,9 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   ];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
-    if (indexLot > 0) await delay(random(delayCurse - aRageDelayCurse, delayCurse + aRageDelayCurse));
     const lot = lots[indexLot];
     if (!lot.is_active) continue;
+    if (indexLot > 0) await delay(random(delayCurse - aRageDelayCurse, delayCurse + aRageDelayCurse));
     logger.info(`Заявка ${lot.id}, старт обработки`);
     logger.log(`Заявка ${lot.id}, поиск брокеров`);
     const brokerLot = brokers.find((el) => el.id === lot.broker_id);

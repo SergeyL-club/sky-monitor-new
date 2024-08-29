@@ -12,7 +12,7 @@ export const TG_NAME_BOT: string = 'SKY BTC BANKER';
 export const TG_ID: number = 280212417;
 
 // порт запуска на сервере (запросы по этому порту отправлять)
-export const PORT: number = 13004;
+export const PORT: number = 8014;
 
 // майл и пороль для входа в sky
 export const EMAIL: string = 'mecherycova@yandex.ru';
@@ -46,8 +46,8 @@ export const SELECTOR_BTN_AUTH: string = '.form-wrap > div > button'; // сел�
 
 // конфиг обновлений циклов
 export const POLLING_CURSE: boolean = false;
-export const DELAY_CURSE_DEALS: number = 120000;
-export const DELAY_CURSE_ARAGE_DEALS: number = 20000;
+export const DELAY_CURSE_DEALS: number = 30000;
+export const DELAY_CURSE_ARAGE_DEALS: number = 5000;
 export const POLLING_CURSE_LIMIT: number = 10;
 export const CURSE_DELAY: number = 5000;
 export const CURSE_ARAGE_DELAY: number = 2000;
