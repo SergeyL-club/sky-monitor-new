@@ -12,7 +12,7 @@ import { Worker } from 'node:worker_threads';
 import { pollingCurse } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
 import telegramApi from './utils/telegram.js';
-import { delay } from './utils/dateTime.js';
+import { delay, random } from './utils/dateTime.js';
 
 type Lot = {
   broker_id: string;
@@ -85,7 +85,9 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     number,
     number,
   ];
+  const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
+    if (indexLot > 0) await delay(random(delayCurse - aRageDelayCurse, delayCurse + aRageDelayCurse));
     const lot = lots[indexLot];
     if (!lot.is_active) continue;
     logger.info(`Заявка ${lot.id}, старт обработки`);

@@ -46,8 +46,11 @@ export const SELECTOR_BTN_AUTH: string = '.form-wrap > div > button'; // сел�
 
 // конфиг обновлений циклов
 export const POLLING_CURSE: boolean = false;
-export const DELAY_CURSE_DEALS: number = 10000;
+export const DELAY_CURSE_DEALS: number = 120000;
+export const DELAY_CURSE_ARAGE_DEALS: number = 20000;
 export const POLLING_CURSE_LIMIT: number = 10;
+export const CURSE_DELAY: number = 5000;
+export const CURSE_ARAGE_DELAY: number = 2000;
 
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
