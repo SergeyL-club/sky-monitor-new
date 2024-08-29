@@ -71,10 +71,6 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   const brokers = (await browser.evalute({ code: evaluteFuncBrokers })) as Broker[] | null;
   if (!Array.isArray(brokers)) return logger.warn(`Не найден список брокеров`);
 
-  const evaluateFuncRates = `getRates("[authKey]")`;
-  const rates = (await browser.evalute({ code: evaluateFuncRates })) as Rate[] | null;
-  if (!Array.isArray(rates)) return logger.warn(`Не найден список курсов`);
-
   const market = (symbol: string, broker: string, currency: string, page: number) =>
     `getMarkets("[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
@@ -115,23 +111,18 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     });
 
     if (candidates.length === 0) {
-      const rate = rates.find((el) => el.symbol === lot.symbol);
-      if (!rate) {
-        logger.warn(`Заявка ${lot.id} не найден курс для базовой конфигурации`);
-        logger.log(`Обработка заявки ${lot.id} завершена`);
+      const nextRate = minPerc + '%';
+      const oldRate = lot.rate;
+      logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
+      if (await redis.getCandidateIs(lot.id)) {
+        logger.log(`Заявка ${lot.id} уже была поставлена в проценты`);
         continue;
       }
-
-      const perc = Math.floor((rate.rate / 100) * minPerc);
-      const nextRate = rate.rate + perc;
-      const oldRate = lot.rate;
-      if (oldRate !== nextRate) {
-        logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
-        if (isSet) {
-          logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
-        } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
-      }
+      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
+      if (isSet) {
+        await redis.setCandidateIs(lot.id, true);
+        logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
+      } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
       logger.log(`Обработка заявки ${lot.id} завершена`);
       continue;
     }
@@ -145,6 +136,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
       const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
       if (isSet) {
+        await redis.setCandidateIs(lot.id, false);
         logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
       } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
     }

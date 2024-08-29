@@ -145,7 +145,7 @@ class TelegramAPI {
         .catch(reject);
     });
 
-  setAdsCurse = async (redis: Remote<WorkerRedis>, adsId: string, curse: number, symbol: 'btc' | 'usdt' = 'btc') =>
+  setAdsCurse = async (redis: Remote<WorkerRedis>, adsId: string, curse: number | string, symbol: 'btc' | 'usdt' = 'btc') =>
     new Promise<boolean>((resolve, reject) => {
       this.add(
         () =>

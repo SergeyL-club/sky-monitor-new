@@ -69,6 +69,40 @@ class WorkerRedis {
     return datas;
   };
 
+  setCandidateIs = async (id: number | string, is: boolean) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_RATES_CACHE')) as string;
+      await this.redis.set(`${path}:${id}`, String(Number(is)));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  getCandidateIs = async (id: number | string) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_RATES_CACHE')) as string;
+      const is = await this.redis.get(`${path}:${id}`);
+      return is === null ? false : Boolean(Number(is));
+    } catch {
+      return false;
+    }
+  };
+
+  clearCandidateIs = async () => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_RATES_CACHE')) as string;
+      const keys = await this.redis.keys(`${path}:*`);
+      for (let indexKey = 0; indexKey < keys.length; indexKey++) {
+        const key = keys[indexKey];
+        await this.redis.del(key);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   initClient = async () => {
     loggerRedis.log(`Инициализация сокета redis`);
     await this.redis.connect();

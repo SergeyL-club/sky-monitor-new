@@ -123,6 +123,7 @@ const convertRequestToConfig = <Type extends KeyOfConfig>(data: string, key: Typ
 worker.on('config-set', async (request, reply) => {
   const query: RequestQuerySetConfig = request.query as RequestQuerySetConfig;
   const data = await redis?.setConfig(query.name, convertRequestToConfig(query.value as string, query.name));
+  if (query.name === 'CURSE_DEFAULT_MIN_PERC') await redis?.clearCandidateIs();
   if (!(query.name in CONFIG)) return reply.status(400).send();
   if (!data) return reply.status(400).send(`Значение не соответсвует CONFIG[${query.name}]: ${query.value} (${typeof query.value})`);
   const dataNow = (await redis?.getConfig(query.name)) ?? CONFIG[query.name];
