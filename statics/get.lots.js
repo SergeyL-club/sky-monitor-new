@@ -1,0 +1,31 @@
+const getLots = async (key, params) =>
+    new Promise((resolve, reject) => {
+      const headers = {
+        Authorization: `Bearer ${getCookie('sky_token')}`,
+        AuthKey: key,
+        'Access-Control-Allow-Origin': '*',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36',
+      };
+  
+      const url = 'https://api.skycrypto.me/rest/v1/lots?' + new URLSearchParams(params).toString();
+  
+      fetch(url, {
+        method: 'GET',
+        headers: headers,
+      })
+        .then(async (response) => {
+          if (response.status === 200) {
+            const { data } = await response.json();
+            return data;
+          } else {
+            throw new Error(`Status: ${response.status}, ${await response.text()}`);
+          }
+        })
+        .then((e) => {
+          resolve(e);
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  

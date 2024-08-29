@@ -69,6 +69,26 @@ class WorkerRedis {
     return datas;
   };
 
+  setCurse = async (id: string | number, rate: string | number) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_RATES_CACHE')) as string;
+      await this.redis.set(`${path}:${id}`, String(rate));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  getCurse = async (id: string | number) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_RATES_CACHE')) as string;
+      const rate = await this.redis.get(`${path}:${id}`);
+      return rate ? Number(rate) : null;
+    } catch {
+      return null;
+    }
+  };
+
   initClient = async () => {
     loggerRedis.log(`Инициализация сокета redis`);
     await this.redis.connect();

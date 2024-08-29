@@ -3,15 +3,155 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
+import { Api } from 'telegram';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
 import logger, { loggerBrowser } from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
-import { pollingDeals, pollingPhone } from './utils/timer.js';
+import { pollingCurse } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
+import telegramApi from './utils/telegram.js';
+import { delay } from './utils/dateTime.js';
 
+type Lot = {
+  broker_id: string;
+  currency: string;
+  details: string;
+  id: string;
+  is_active: boolean;
+  is_active_auto_requisites: boolean;
+  limit_from: number;
+  limit_to: number;
+  rate: number;
+  requisites: string;
+  symbol: string;
+  type: string;
+};
 
+type Rate = {
+  currency: string;
+  rate: number;
+  symbol: string;
+};
+
+type ElementMarket = {
+  broker_id: string;
+  currency: string;
+  id: string;
+  limit_from: number;
+  limit_to: number;
+  rate: number;
+  symbol: string;
+  type: string;
+  user: {
+    deals: string[];
+    nickname: string;
+    rating: number;
+    verified: boolean;
+  };
+};
+
+type Broker = {
+  allow_sky_pay_autotrader: boolean;
+  autotrader_name: null | string;
+  id: string;
+  is_card: boolean;
+  logo: string;
+  name: string;
+};
+
+async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
+  const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
+  const evaluteFuncLots = `getLots("[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
+  const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
+  if (!Array.isArray(lots)) return logger.warn(`Не найден список заявок в запросе`);
+
+  const evaluteFuncBrokers = `getBrokers("[authKey]", "rub")`;
+  const brokers = (await browser.evalute({ code: evaluteFuncBrokers })) as Broker[] | null;
+  if (!Array.isArray(brokers)) return logger.warn(`Не найден список брокеров`);
+
+  const evaluateFuncRates = `getRates("[authKey]")`;
+  const rates = (await browser.evalute({ code: evaluateFuncRates })) as Rate[] | null;
+  if (!Array.isArray(rates)) return logger.warn(`Не найден список курсов`);
+
+  const market = (symbol: string, broker: string, currency: string, page: number) =>
+    `getMarkets("[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
+
+  const [verif, minCurse, ignores, minPerc, fixPerc] = (await redis.getsConfig(['IS_VERIFIED', 'CURSE_MIN', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'CURSE_FIX_PERC'])) as [
+    boolean,
+    number,
+    string[],
+    number,
+    number,
+  ];
+  for (let indexLot = 0; indexLot < lots.length; indexLot++) {
+    const lot = lots[indexLot];
+    // if (!lot.is_active) continue;
+    logger.info(`Заявка ${lot.id}, старт обработки`);
+    logger.log(`Заявка ${lot.id}, поиск брокеров`);
+    const brokerLot = brokers.find((el) => el.id === lot.broker_id);
+    if (!brokerLot) {
+      logger.warn(`Заявка ${lot.id} не наден брокер`);
+      logger.log(`Обработка заявки ${lot.id} завершена`);
+      continue;
+    }
+
+    logger.log(`Заявка ${lot.id}, получение списка конкурентов`);
+    const markets = (await browser.evalute({ code: market(lot.symbol, brokerLot.name, lot.currency, 1) })) as ElementMarket[] | null;
+    if (!Array.isArray(markets)) {
+      logger.warn(`Заявка ${lot.id} не удалось получить списки заявок`);
+      logger.log(`Обработка заявки ${lot.id} завершена`);
+      continue;
+    }
+
+    // фильтр кандидатов
+    logger.log(`Заявка ${lot.id}, фильтрация конкурентов по параметрам`);
+    const candidates = markets.filter((el) => {
+      const isVerif = el.user.verified ?? !verif;
+      const isLimit = el.limit_to >= lot.limit_from;
+      const isMinCurse = el.rate >= minCurse;
+      const isIgnore = !ignores.find((ignore) => ignore === `/u${el.user.nickname}`);
+      return isIgnore && isVerif && isLimit && isMinCurse;
+    });
+
+    if (candidates.length === 0) {
+      const rate = rates.find((el) => el.symbol === lot.symbol);
+      if (!rate) {
+        logger.warn(`Заявка ${lot.id} не найден курс для базовой конфигурации`);
+        logger.log(`Обработка заявки ${lot.id} завершена`);
+        continue;
+      }
+
+      const perc = Math.floor((rate.rate / 100) * minPerc);
+      const nextRate = rate.rate + perc;
+      const oldRate = await redis.getCurse(lot.id);
+      if (oldRate !== nextRate) {
+        logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
+        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate);
+        if (isSet) {
+          logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
+          await redis.setCurse(lot.id, nextRate);
+        } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
+      }
+      logger.log(`Обработка заявки ${lot.id} завершена`);
+      continue;
+    }
+
+    const candidate = candidates[0];
+    const nextRate = candidate.rate + fixPerc;
+    const oldRate = await redis.getCurse(lot.id);
+    if (oldRate !== nextRate) {
+      logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
+      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate);
+      if (isSet) {
+        logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
+        await redis.setCurse(lot.id, nextRate);
+      } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
+    }
+    logger.log(`Обработка заявки ${lot.id} завершена`);
+  }
+}
 
 const main = () =>
   new Promise<number>(() => {
@@ -86,6 +226,7 @@ const main = () =>
     const next = () => {
       browser.updateKeys().then(() => {
         loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+        pollingCurse(redis, updateCurse.bind(null, redis, browser));
       });
     };
 
@@ -103,7 +244,7 @@ const main = () =>
     try {
       redis.initClient().then(() => {
         server.init();
-        // initBrowser();
+        initBrowser();
       });
     } catch (error: unknown) {
       logger.error(error);
