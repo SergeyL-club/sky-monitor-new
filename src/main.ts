@@ -3,7 +3,7 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
-import { Api } from 'telegram';
+import type { KeyOfConfig } from './workers/redis.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
@@ -78,13 +78,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   const market = (symbol: string, broker: string, currency: string, page: number) =>
     `getMarkets("[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
-  const [verif, minCurse, ignores, minPerc, fixPerc] = (await redis.getsConfig(['IS_VERIFIED', 'CURSE_MIN', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'CURSE_FIX_PERC'])) as [
-    boolean,
-    number,
-    string[],
-    number,
-    number,
-  ];
+  const [verif, ignores, minPerc, fixPerc] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'CURSE_FIX_PERC'])) as [boolean, string[], number, number];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
     const lot = lots[indexLot];
@@ -109,6 +103,8 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
 
     // фильтр кандидатов
     logger.log(`Заявка ${lot.id}, фильтрация конкурентов по параметрам`);
+    const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
+    const minCurse = (await redis.getConfig(('CURSE_MIN' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
     const candidates = markets.filter((el) => {
       const isVerif = el.user.verified ?? !verif;
       const isLimit = el.limit_to >= lot.limit_from;
@@ -132,7 +128,6 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       const oldRate = await redis.getCurse(lot.id);
       if (oldRate !== nextRate) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-        const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
         const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
         if (isSet) {
           logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
@@ -148,7 +143,6 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     const oldRate = await redis.getCurse(lot.id);
     if (oldRate !== nextRate) {
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-      const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
       const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
       if (isSet) {
         logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);

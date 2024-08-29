@@ -21,7 +21,8 @@ export const PASSWORD: string = 'Dar19810';
 
 // конфиг заявки
 export const IS_VERIFIED: boolean = true;
-export const CURSE_MIN: number = 5000000;
+export const CURSE_MIN_BTC: number = 5000000;
+export const CURSE_MIN_USDT: number = 100;
 export const IGNORE_ADS_USER: string[] = [];
 export const CURSE_DEFAULT_MIN_PERC: number = 15;
 export const CURSE_FIX_PERC: number = 0;
