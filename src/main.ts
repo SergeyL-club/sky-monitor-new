@@ -141,6 +141,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
     const nextRate = candidate.rate + fixPerc;
     const oldRate = await redis.getCurse(lot.id);
+    console.log(nextRate, oldRate);
     if (oldRate !== nextRate) {
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
       const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
