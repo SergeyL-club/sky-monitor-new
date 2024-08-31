@@ -32,21 +32,11 @@ export const CURSE_FIX_USDT: number = 0;
 // конфиг браузера
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 30000; // ожидание ответа страницы или других загрузок
 export const WAIT_UNTIL: WaitForOptions['waitUntil'] = 'domcontentloaded'; // тип ожидания (см. в waitUntil puppeteer)
-export const URL_MAIN_AUTH: string = 'https://skycrypto.me'; // ссылка проверка (если он находится тут значит надо авторизация), также ссылка начала авторизации
-export const URL_DEALS: string = 'https://skycrypto.me/deals'; // ссылка где находятся сделки
+export const URL_MAIN: string = 'https://skycrypto.me/deals'; // ссылка проверка (если он находится тут значит надо авторизация), также ссылка начала авторизации
 export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
 export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
-export const DELAY_AUTH: number = 5000; // ожидание автоматического перехода сайтом, переключение формы с поролем
 export const CNT_EVALUTE: number = 3;
 export const DELAY_CNT: number = 5000;
-
-// селекторы для авторизации (если список - 0:ru 1:en)
-export const SELECTOR_INPUT_EMAIL: string = 'input[name="email"]';
-export const SELECTOR_INPUT_PASSWORD: string = 'input[name="password"]';
-export const SELECTOR_ERROR: [string, string] = ['//span[text()="Ошибка 404"]', '//span[text()="Error 404"]']; // селектор на ошибку 404
-export const SELECTOR_AUTH_FORM: string = '.top-nav > div > div > div:nth-child(5)'; // селектор на вход в форму авторизации
-export const SELECTOR_URL_AUTH: string = '.form-wrap > div:nth-child(6) > a'; // селекторы на ссылку для открытия пароля в форме
-export const SELECTOR_BTN_AUTH: string = '.form-wrap > div > button'; // селекторы на кнопку входа уже в форме
 
 // конфиг обновлений циклов
 export const POLLING_CURSE: boolean = false;

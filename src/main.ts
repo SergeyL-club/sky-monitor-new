@@ -67,16 +67,16 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   // console.log(isTrade);
   // if (isTrade === 'false') return logger.log(`Начало итерации остановлено, т.к. трейд отключен`);
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
-  const evaluteFuncLots = `getLots("[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
+  const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
   if (!Array.isArray(lots)) return logger.warn(`Не найден список заявок в запросе`);
 
-  const evaluteFuncBrokers = `getBrokers("[authKey]", "rub")`;
+  const evaluteFuncBrokers = `getBrokers("[accessKey]", "[authKey]", "rub")`;
   const brokers = (await browser.evalute({ code: evaluteFuncBrokers })) as Broker[] | null;
   if (!Array.isArray(brokers)) return logger.warn(`Не найден список брокеров`);
 
   const market = (symbol: string, broker: string, currency: string, page: number) =>
-    `getMarkets("[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
+    `getMarkets("[accessKey]", "[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
   const [verif, ignores, minPerc] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC'])) as [boolean, string[], number];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];

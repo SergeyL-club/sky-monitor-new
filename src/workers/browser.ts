@@ -96,21 +96,23 @@ class WorkerBrowser {
 
   // local params
   private isReAuth: boolean;
+  private access: string;
+  private refresh: string;
 
   // browser data
   private keys: Keys;
   private authKey: string;
-  private deals: Page | null;
+  private page: Page | null;
   private browser: Browser | null;
-  private authCookie: string;
 
   constructor() {
     this.proxyParams = '';
     this.isReAuth = false;
     this.browser = null;
-    this.deals = null;
-    this.authCookie = '';
+    this.page = null;
     this.authKey = '';
+    this.access = '';
+    this.refresh = '';
     this.keys = {};
     if (WorkerBrowser.instance) return WorkerBrowser.instance;
     WorkerBrowser.instance = this;
@@ -210,40 +212,68 @@ class WorkerBrowser {
     return page;
   };
 
-  setPageDefault = async (reload: boolean = false) => {
+  setPageDefault = async () => {
     // set page deals
     loggerBrowser.info(`Создание основной страницы`);
-    const url = 'https://skycrypto.me/deals';
-    let page = await this.initPage(url);
+    const url = (await redis!.getConfig('URL_MAIN')) as string;
+    const page = await this.initPage(url);
     if (!page) {
       loggerBrowser.error(new Error('Ошибка создания page'), 'Не удалось создать page deals');
       return false;
     }
 
-    if (reload) {
-      // close 0 page
-      if (this.browser) {
-        loggerBrowser.log('Удаляем ненужную страницу');
-        const pagesNull = await this.browser.pages();
-        if (pagesNull.length > 1) await pagesNull[0].close();
-      }
-      this.deals = null;
+    // close 0 page
+    if (this.browser) {
+      loggerBrowser.log('Удаляем ненужную страницу');
+      const pagesNull = await this.browser.pages();
+      if (pagesNull.length > 1) await pagesNull[0].close();
     }
+    this.page = null;
 
     // check auth
-    page = await this.checkAuth(page, url);
-    if (!page) {
-      loggerBrowser.error(new Error('Ошибка авторизации page'), 'Не удалось провести авторизацию page deals');
+    if (!(await this.authEvalute(page))) {
+      loggerBrowser.error(new Error('Ошибка авторизации'), 'Не удалось авторизоваться');
       return false;
     }
 
     // save page
     loggerBrowser.log('Сохранияем адрес ссылки на сделки');
-    this.deals = page;
-    if (reload) await this.updateKeys(page);
+    this.page = page;
 
-    this.isReAuth = false;
     return page;
+  };
+
+  authEvalute = async (page?: Page) => {
+    this.isReAuth = true;
+    try {
+      const [email, password] = (await redis!.getsConfig(['EMAIL', 'PASSWORD'])) as [string, string];
+      const evaluateAuthFunc = `authPost("${email}", "${password}")`;
+      const { access, refresh } = (await this.evalute({ code: evaluateAuthFunc, page })) as { access: string; refresh: string };
+      this.access = access;
+      this.refresh = refresh;
+      this.isReAuth = false;
+      return true;
+    } catch (error: unknown) {
+      loggerBrowser.error(error);
+      this.isReAuth = false;
+      return false;
+    }
+  };
+
+  authRefreshEvalute = async (page?: Page) => {
+    this.isReAuth = true;
+    try {
+      const evaluateAuthRefreshFunc = `refresh("[authKey]", "[refreshKey]")`;
+      const { access, refresh } = (await this.evalute({ code: evaluateAuthRefreshFunc, page })) as { access: string; refresh: string };
+      this.access = access;
+      this.refresh = refresh;
+      this.isReAuth = false;
+      return true;
+    } catch (error: unknown) {
+      loggerBrowser.error(error);
+      this.isReAuth = false;
+      return false;
+    }
   };
 
   initBrowser = async (headless?: boolean) => {
@@ -261,11 +291,6 @@ class WorkerBrowser {
 
       // set page
       await this.setPageDefault();
-
-      // close 0 page
-      loggerBrowser.log('Удаляем ненужную страницу');
-      const pageNull = (await this.browser.pages())[0];
-      await pageNull.close();
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
@@ -331,104 +356,6 @@ class WorkerBrowser {
     }
   };
 
-  checkAuth = async (page: Page, url = 'https://skycrypto.me/wallet') => {
-    loggerBrowser.log(`Проверка авторизации (${url})`);
-    let localPage: Page | null = page;
-
-    if (this.isReAuth) {
-      loggerBrowser.log('Ждём авторизации');
-      await localPage.close();
-
-      if (!(await this.waitReAuth())) {
-        loggerBrowser.warn('Не должался авторизации (check auth)');
-        return null;
-      }
-      localPage = await this.initPage(url);
-      if (localPage) await this.goto(localPage, url);
-      else {
-        loggerBrowser.warn('Пустой page (check auth)');
-        return null;
-      }
-    }
-
-    const [selectorErrorRu, selectorErrorEn] = (await redis?.getConfig('SELECTOR_ERROR')) as [string, string];
-    const urlMainAuth = (await redis?.getConfig('URL_MAIN_AUTH')) as string;
-    const error = (await localPage.$x(selectorErrorRu)) || (await localPage.$x(selectorErrorEn)) || null;
-    const checkMain = localPage.url() == urlMainAuth || localPage.url() == `${urlMainAuth}/`;
-
-    if (error || checkMain || localPage.url() != url) {
-      this.isReAuth = true;
-      loggerBrowser.log('Не авторизирован, попытка авторизироваться');
-      const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
-      await delay(random(delayEventMin, delayEventMax));
-      if (!(await this.auth(localPage))) return null;
-      loggerBrowser.log(`Переходит на нужную ссылку (${page.url()}, ${url})`);
-      await this.goto(localPage, url);
-    }
-
-    loggerBrowser.log(`Завершили проверку авторизации (${page.url()})`);
-
-    const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
-    await delay(random(delayEventMin, delayEventMax));
-    return page;
-  };
-
-  auth = async (page: Page) => {
-    loggerBrowser.log('Переход на главную страницу');
-    const delayAuth = (await redis?.getConfig('DELAY_AUTH')) as number;
-    const urlMainAuth = (await redis?.getConfig('URL_MAIN_AUTH')) as string;
-    await this.goto(page, urlMainAuth);
-
-    await delay(delayAuth);
-    const [delayEventMin, delayEventMax] = (await redis?.getsConfig(['DELAY_EVENT_MIN', 'DELAY_EVENT_MAX'])) as [number, number];
-    const selectorAuthForm = (await redis?.getConfig('SELECTOR_AUTH_FORM')) as string;
-    const btnAuth = (await page.$(selectorAuthForm)) || null;
-    if (!btnAuth) {
-      loggerBrowser.warn('Неудалось найти кнопку входа (главная страница)');
-      return false;
-    }
-    await (btnAuth as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
-
-    await delay(delayAuth);
-    const [selectorInputEmail, selectorInputPassword] = (await redis?.getsConfig(['SELECTOR_INPUT_EMAIL', 'SELECTOR_INPUT_PASSWORD'])) as [string, string];
-    let inputEmail = (await page.$(selectorInputEmail)) || null;
-    let inputPassword = (await page.$(selectorInputPassword)) || null;
-    if (!inputEmail || !inputPassword) {
-      const selectorUrlAuth = (await redis?.getConfig('SELECTOR_URL_AUTH')) as string;
-      const uriAuth = (await page.$(selectorUrlAuth)) || null;
-      if (!uriAuth) {
-        loggerBrowser.warn('Не было найдена "a" для открытия input password');
-        return false;
-      }
-      await uriAuth.click({ delay: random(delayEventMin, delayEventMax) });
-    }
-
-    await delay(delayAuth);
-    inputEmail = (await page.$(selectorInputEmail)) || null;
-    inputPassword = (await page.$(selectorInputPassword)) || null;
-    if (!inputEmail || !inputPassword) {
-      loggerBrowser.warn('Даже после нажатия на "a" для открытия input password он так и не появлися');
-      return false;
-    }
-
-    const [email, password] = (await redis?.getsConfig(['EMAIL', 'PASSWORD'])) as [string, string];
-    await delay(random(delayEventMin, delayEventMax));
-    await this.inputSet({ input: inputEmail as ElementHandle<Element>, text: email, page });
-    await delay(random(delayEventMin, delayEventMax));
-    await this.inputSet({ input: inputPassword as ElementHandle<Element>, text: password, page });
-
-    const selectorBtnAuth = (await redis?.getConfig('SELECTOR_BTN_AUTH')) as string;
-    const btnAuthForm = (await page.$(selectorBtnAuth)) || null;
-    if (!btnAuthForm) {
-      loggerBrowser.warn('Неудалось найти кнопку входа (форма)');
-      return false;
-    }
-    await (btnAuthForm as ElementHandle<Element>).click({ delay: random(delayEventMin, delayEventMax) });
-    await delay(delayAuth);
-
-    return true;
-  };
-
   closeBrowser = async () => {
     await this.browser?.close();
   };
@@ -436,7 +363,7 @@ class WorkerBrowser {
   updateKeys = async (page?: Page) =>
     new Promise((resolve) => {
       loggerBrowser.log('Запуск сокета для обновления keys и auth key');
-      const localPage = page ?? this.deals;
+      const localPage = page ?? this.page;
       if (!localPage) {
         loggerBrowser.warn('Не удалось запустить socket для обновления keys (auth key), т.к. нету page');
         return;
@@ -482,11 +409,13 @@ class WorkerBrowser {
     let localCode = `${code}`;
     loggerBrowser.log('Поиск регулярок и их замена');
     if (localCode.includes('[authKey]')) localCode = localCode.split('[authKey]').join(`${this.authKey}`);
+    if (localCode.includes('[refreshKey]')) localCode = localCode.split('[refreshKey]').join(`${this.refresh}`);
+    if (localCode.includes('[accessKey]')) localCode = localCode.split('[accessKey]').join(`${this.access}`);
 
     try {
       // проверяем page
-      if (page) this.injectStatic(page);
-      const localPage = page ?? this.deals;
+      const localPage = page ?? this.page;
+      await this.injectStatic(localPage as Page);
       if (!localPage) {
         loggerBrowser.warn('Не удалось сделать запрос, т.к. отсутсвует page');
         throw new Error('401, Unauthorized, page null');
@@ -503,12 +432,8 @@ class WorkerBrowser {
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
-          // set page
-          const nowPage = await this.setPageDefault(true);
-          if (nowPage === false) {
-            return null;
-          }
-          return await this.evalute<Type>({ page: nowPage, code }, cnt + 1);
+          if (!(await this.authRefreshEvalute())) await this.authEvalute();
+          return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
         await this.waitReAuth();
