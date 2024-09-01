@@ -508,6 +508,7 @@ class WorkerBrowser {
         page,
         callback: (data) => resolve(data as Type),
       });
+      loggerBrowser.log(this.evaluteRows);
     });
 }
 
