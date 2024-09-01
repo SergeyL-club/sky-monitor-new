@@ -315,7 +315,7 @@ class WorkerBrowser {
       this.browser = await puppeteerExtra.launch(params);
 
       // set page
-      Promise.resolve(pollingEvaluteCycle.bind(null, this.evaluteCycleRow.bind(this)));
+      pollingEvaluteCycle(this.evaluteCycleRow.bind(this));
       await this.setPageDefault();
 
       // end

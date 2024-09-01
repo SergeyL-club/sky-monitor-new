@@ -53,6 +53,6 @@ export function pollingPanik(redis: Remote<WorkerRedis>, callback: () => void | 
 
 export function pollingEvaluteCycle(callback: () => void | Promise<void>) {
   Promise.resolve(callback()).finally(() => {
-    pollingEvaluteCycle.call(null, callback);
+    delay(250).finally(() => pollingEvaluteCycle.call(null, callback));
   });
 }
