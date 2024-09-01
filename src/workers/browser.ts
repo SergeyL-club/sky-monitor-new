@@ -15,6 +15,7 @@ import puppeteer from 'puppeteer';
 import { expose, wrap } from 'comlink';
 import md5 from 'md5';
 import { fileURLToPath } from 'node:url';
+import { pollingEvaluteCycle } from '../utils/timer.js';
 
 type ServerCommands = 'server' | 'redis' | 'exit' | 'connect';
 type WindowCustom = {
@@ -82,7 +83,11 @@ export type DetailsDeal = {
   voted: boolean;
 };
 
-// local config in worker
+type EvaluteCallback = {
+  page?: Page;
+  code: string;
+  callback: (data: string | null) => void;
+};
 
 // channels
 let redis: Remote<WorkerRedis> | null = null;
@@ -105,6 +110,7 @@ class WorkerBrowser {
   private page: Page | null;
   private browser: Browser | null;
   private isCodeUpdate: boolean;
+  private evaluteRows: EvaluteCallback[];
 
   constructor() {
     this.proxyParams = '';
@@ -115,6 +121,7 @@ class WorkerBrowser {
     this.authKey = '';
     this.access = '';
     this.refresh = '';
+    this.evaluteRows = [];
     this.keys = {};
     if (WorkerBrowser.instance) return WorkerBrowser.instance;
     WorkerBrowser.instance = this;
@@ -309,6 +316,7 @@ class WorkerBrowser {
 
       // set page
       await this.setPageDefault();
+      pollingEvaluteCycle.call(null, this.evaluteCycleRow.bind(this));
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
@@ -316,6 +324,14 @@ class WorkerBrowser {
     } catch (error: unknown) {
       loggerBrowser.error(error, 'Ошибка без обработки (init browser)');
       return false;
+    }
+  };
+
+  private evaluteCycleRow = async () => {
+    if (this.evaluteRows.length > 0) {
+      const data = this.evaluteRows.shift();
+      if (!data) return;
+      data.callback(await this.evaluteFunc({ page: data.page, code: data.code }));
     }
   };
 
@@ -436,7 +452,7 @@ class WorkerBrowser {
       });
     });
 
-  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
+  private evaluteFunc = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
     const [maxCnt, delayCnt] = (await redis?.getsConfig(['CNT_EVALUTE', 'DELAY_CNT'])) as [number, number];
     loggerBrowser.log(`Запрос на browser, код: ${code}`);
 
@@ -484,6 +500,15 @@ class WorkerBrowser {
       return null;
     }
   };
+
+  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> =>
+    new Promise<Type>((resolve) => {
+      this.evaluteRows.push({
+        code,
+        page,
+        callback: (data) => resolve(data as Type),
+      });
+    });
 }
 
 const worker = new WorkerBrowser();
