@@ -329,7 +329,12 @@ class WorkerBrowser {
 
   private evaluteCycleRow = async () => {
     if (this.evaluteRows.length > 0) {
-      const data = this.evaluteRows.shift();
+      const dataIndex = this.evaluteRows.findIndex((el) => el.code.includes('refresh') || el.code.includes('getCodeData'));
+      let data = undefined as EvaluteCallback | undefined;
+      if (dataIndex !== -1) {
+        data = this.evaluteRows[dataIndex];
+        this.evaluteRows.splice(dataIndex, 1);
+      } else data = this.evaluteRows.shift();
       if (!data) return;
       this.evaluteFunc({ page: data.page, code: data.code }).then((value) => {
         data.callback(value as string | null);
