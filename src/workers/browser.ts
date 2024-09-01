@@ -484,25 +484,25 @@ class WorkerBrowser {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
           if (!(await this.authRefreshEvalute())) await this.authEvalute();
-          return await this.evalute<Type>({ page, code }, cnt + 1);
+          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
 
         if (String(error).includes('412') && String(error).includes('Precondition Failed') && !this.isCodeUpdate) {
           await this.updateKeysCode();
-          return await this.evalute<Type>({ page, code }, cnt + 1);
+          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
 
         await this.waitReCode();
         await this.waitReAuth();
         await delay(delayCnt);
-        return await this.evalute<Type>({ page, code }, cnt + 1);
+        return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
       }
       return null;
     }
   };
 
-  evalute = async <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> =>
-    new Promise<Type>((resolve) => {
+  evalute = <Type>({ page, code }: { page?: Page; code: string }): Promise<Type | null> => {
+    return new Promise<Type>((resolve) => {
       this.evaluteRows.push({
         code,
         page,
@@ -510,6 +510,7 @@ class WorkerBrowser {
       });
       loggerBrowser.log(this.evaluteRows);
     });
+  };
 }
 
 const worker = new WorkerBrowser();
