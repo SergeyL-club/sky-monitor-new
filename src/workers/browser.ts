@@ -104,10 +104,12 @@ class WorkerBrowser {
   private authKey: string;
   private page: Page | null;
   private browser: Browser | null;
+  private isCodeUpdate: boolean;
 
   constructor() {
     this.proxyParams = '';
     this.isReAuth = false;
+    this, (this.isCodeUpdate = false);
     this.browser = null;
     this.page = null;
     this.authKey = '';
@@ -263,7 +265,7 @@ class WorkerBrowser {
   authRefreshEvalute = async (page?: Page) => {
     this.isReAuth = true;
     try {
-      const evaluateAuthRefreshFunc = `refresh("[authKey]", "[refreshKey]")`;
+      const evaluateAuthRefreshFunc = `refresh("[refreshKey]", "[authKey]")`;
       const { access, refresh } = (await this.evalute({ code: evaluateAuthRefreshFunc, page })) as { access: string; refresh: string };
       this.access = access;
       this.refresh = refresh;
@@ -272,6 +274,22 @@ class WorkerBrowser {
     } catch (error: unknown) {
       loggerBrowser.error(error);
       this.isReAuth = false;
+      return false;
+    }
+  };
+
+  updateKeysCode = async (page?: Page) => {
+    this.isCodeUpdate = true;
+    try {
+      const evaluateAuthRefreshFunc = `getCodeData("[accessKey]", "[authKey]")`;
+      const code = (await this.evalute({ code: evaluateAuthRefreshFunc, page })) as { [key: string]: string };
+      this.keys = code;
+      this.authKey = this.generateAuthKey();
+      this.isCodeUpdate = false;
+      return true;
+    } catch (error: unknown) {
+      loggerBrowser.error(error);
+      this.isCodeUpdate = false;
       return false;
     }
   };
@@ -310,6 +328,23 @@ class WorkerBrowser {
         isDelay = true;
         delay(100).then(() => (isDelay = false));
         if (!this.isReAuth) {
+          res(true);
+          return;
+        }
+        if (!isDelay) cnt++;
+      }
+      res(false);
+    });
+
+  waitReCode = (): Promise<boolean> =>
+    new Promise((res) => {
+      let cnt = 0;
+      let isDelay = false;
+
+      while (cnt < 250) {
+        isDelay = true;
+        delay(100).then(() => (isDelay = false));
+        if (!this.isCodeUpdate) {
           res(true);
           return;
         }
@@ -436,6 +471,12 @@ class WorkerBrowser {
           return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
+        if (String(error).includes('412') && String(error).includes('Precondition Failed') && !this.isCodeUpdate) {
+          await this.updateKeysCode();
+          return await this.evalute<Type>({ page, code }, cnt + 1);
+        }
+
+        await this.waitReCode();
         await this.waitReAuth();
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);

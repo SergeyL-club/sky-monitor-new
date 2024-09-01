@@ -291,12 +291,11 @@ const main = () =>
     });
 
     const next = () => {
-      browser.updateKeys().then(() => {
-        loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-        pollingCurse(redis, updateCurse.bind(null, redis, browser));
-        pollingDeals(redis, getDeals.bind(null, redis, browser));
-        pollingPanik(redis, panikDeal.bind(null, redis));
-      });
+      browser.updateKeys();
+      // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
+      pollingCurse(redis, updateCurse.bind(null, redis, browser));
+      pollingDeals(redis, getDeals.bind(null, redis, browser));
+      pollingPanik(redis, panikDeal.bind(null, redis));
     };
 
     const headless = process.argv.includes('--headless');
