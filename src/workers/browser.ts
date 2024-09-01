@@ -315,8 +315,8 @@ class WorkerBrowser {
       this.browser = await puppeteerExtra.launch(params);
 
       // set page
-      await this.setPageDefault();
       Promise.resolve(pollingEvaluteCycle.bind(null, this.evaluteCycleRow.bind(this)));
+      await this.setPageDefault();
 
       // end
       loggerBrowser.info('Установка базовой конфигурации завершена');
