@@ -83,10 +83,17 @@ class WorkerServer {
     // this.fastify.post('/notify', this.onNotifyMessage.bind(this));
 
     loggerServer.log(`Создание хука на путь /`);
-    this.fastify.get(`/`, (request, reply) => {
+    this.fastify.get(`/`, async (request, reply) => {
       const query: RequestQuery = request.query as RequestQuery;
       const keys = Object.keys(this.listen);
-      if ('deal_process' in query) return reply.status(200).send('ok');
+      if ('deal_process' in query) {
+        const isDel = await redis?.delPanikDeal(query['deal_process'] as string);
+        return reply.status(200).send(`is? (${isDel})`);
+      }
+      if ('deal_del' in query) {
+        const isDel = await redis?.delPanikDeal(query['deal_del'] as string);
+        return reply.status(200).send(`is? (${isDel})`);
+      }
       if ('command' in query)
         for (let indexListen = 0; indexListen < keys.length; indexListen++) {
           const callback = this.listen[keys[indexListen]];
@@ -157,21 +164,13 @@ worker.on('menu', async (request, reply) => {
   const ignoreClient: KeyOfConfig[] = [
     'WAIT_TIMEOUT',
     'WAIT_UNTIL',
-    'URL_MAIN_AUTH',
-    'URL_DEALS',
-    'DELAY_EVENT_MIN',
-    'DELAY_EVENT_MAX',
-    'DELAY_AUTH',
+    'URL_MAIN',
     'CNT_EVALUTE',
     'DELAY_CNT',
-    'SELECTOR_INPUT_EMAIL',
-    'SELECTOR_INPUT_PASSWORD',
-    'SELECTOR_ERROR',
-    'SELECTOR_AUTH_FORM',
-    'SELECTOR_URL_AUTH',
-    'SELECTOR_BTN_AUTH',
+    'DATA_PATH_REDIS_PANIK_DEALS',
     'DATA_PATH_REDIS_CONFIG',
     'DATA_PATH_REDIS_RATES_CACHE',
+    'DATA_PATH_REDIS_DEALS_CACHE',
     'URL_REDIS',
     'DB_REDIS',
   ];

@@ -20,3 +20,33 @@ export function pollingCurse(redis: Remote<WorkerRedis>, callback: () => void | 
     });
   });
 }
+
+export function pollingDeals(redis: Remote<WorkerRedis>, callback: () => void | Promise<void>) {
+  redis.getConfig('POLLING_DEALS').then((polling) => {
+    redis.getConfig('DELAY_POLLING_DEALS').then((delayCycle) => {
+      const start = Date.now();
+      if (polling)
+        Promise.resolve(callback()).finally(() => {
+          const delta = (delayCycle as number) - (Date.now() - start);
+          if (delta > 0) delay(delayCycle as number).finally(() => pollingDeals.call(null, redis, callback));
+          else pollingDeals.call(null, redis, callback);
+        });
+      else delay(delayCycle as number).finally(() => pollingDeals.call(null, redis, callback));
+    });
+  });
+}
+
+export function pollingPanik(redis: Remote<WorkerRedis>, callback: () => void | Promise<void>) {
+  redis.getConfig('PANIK_DEALS').then((polling) => {
+    redis.getConfig('DELAY_PANIK_DEALS_TIMER').then((delayCycle) => {
+      const start = Date.now();
+      if (polling)
+        Promise.resolve(callback()).finally(() => {
+          const delta = (delayCycle as number) - (Date.now() - start);
+          if (delta > 0) delay(delayCycle as number).finally(() => pollingDeals.call(null, redis, callback));
+          else pollingDeals.call(null, redis, callback);
+        });
+      else delay(delayCycle as number).finally(() => pollingDeals.call(null, redis, callback));
+    });
+  });
+}

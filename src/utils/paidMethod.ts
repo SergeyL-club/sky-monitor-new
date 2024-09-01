@@ -22,7 +22,7 @@ export type ApiRequest = FastifyRequest<{
 }>;
 
 export async function get_method_str(port: number, redis: Remote<WorkerRedis>) {
-  const mtsPort = (await redis.getConfig('MTS_PORT')) as number;
+  const mtsPort = -1;
   const yandexPort = -1;
   const qiwiPort = -1;
   const payeerPort = -1;

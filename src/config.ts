@@ -33,8 +33,6 @@ export const CURSE_FIX_USDT: number = 0;
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 30000; // ожидание ответа страницы или других загрузок
 export const WAIT_UNTIL: WaitForOptions['waitUntil'] = 'domcontentloaded'; // тип ожидания (см. в waitUntil puppeteer)
 export const URL_MAIN: string = 'https://skycrypto.me/deals'; // ссылка проверка (если он находится тут значит надо авторизация), также ссылка начала авторизации
-export const DELAY_EVENT_MIN: number = 50; // минимальная задержка действия (пример: клик, ожидание после действия)
-export const DELAY_EVENT_MAX: number = 100; // максимальная задержка действия (пример: клик, ожидание после действия)
 export const CNT_EVALUTE: number = 3;
 export const DELAY_CNT: number = 5000;
 
@@ -46,8 +44,23 @@ export const POLLING_CURSE_LIMIT: number = 10;
 export const CURSE_DELAY: number = 5000;
 export const CURSE_ARAGE_DELAY: number = 2000;
 
+// обновление списка сделок
+export const POLLING_DEALS: boolean = false;
+export const POLLING_DEALS_BTC: boolean = true;
+export const POLLING_DEALS_USDT: boolean = true;
+export const DELAY_POLLING_DEALS: number = 10000;
+export const POLLING_DEALS_LIMIT_BTC: number = 20;
+export const POLLING_DEALS_LIMIT_USDT: number = 20;
+
+// delay panik
+export const PANIK_DEALS: boolean = false;
+export const DELAY_PANIK_DEALS_TIMER: number = 5000;
+export const DELAY_PANIK_DEAL: number = 30000;
+
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
+export const DATA_PATH_REDIS_PANIK_DEALS: string = `sky-monitor-new:panik:deals`;
 export const DATA_PATH_REDIS_RATES_CACHE: string = `sky-monitor-new:rates`;
+export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky-new:deals:cache`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;

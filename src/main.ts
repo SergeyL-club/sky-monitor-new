@@ -3,16 +3,17 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
-import type { KeyOfConfig } from './workers/redis.js';
+import type { CacheDeal, DealGet, KeyOfConfig } from './workers/redis.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
 import logger, { loggerBrowser } from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
-import { pollingCurse } from './utils/timer.js';
+import { pollingCurse, pollingDeals, pollingPanik } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
 import telegramApi from './utils/telegram.js';
 import { delay, random } from './utils/dateTime.js';
+import { sendTgNotify } from './utils/paidMethod.js';
 
 type Lot = {
   broker_id: string;
@@ -27,12 +28,6 @@ type Lot = {
   requisites: string;
   symbol: string;
   type: string;
-};
-
-type Rate = {
-  currency: string;
-  rate: number;
-  symbol: string;
 };
 
 type ElementMarket = {
@@ -62,10 +57,6 @@ type Broker = {
 };
 
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
-  // const evaluteTradeToggleFunc = `getCookie('LAST_SELL_TRADING_ACTIVE')`;
-  // const isTrade = (await browser.evalute({ code: evaluteTradeToggleFunc })) as 'true' | 'false';
-  // console.log(isTrade);
-  // if (isTrade === 'false') return logger.log(`Начало итерации остановлено, т.к. трейд отключен`);
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
   const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
@@ -146,6 +137,89 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   }
 }
 
+async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
+  logger.info(`Получение списка сделок`);
+  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit });
+  const code = (data: ReturnType<typeof params>) => `getDeals('[accessKey]','[authKey]', ${JSON.stringify(data)})`;
+
+  const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
+  const usdtLimit = await redis.getConfig('POLLING_DEALS_LIMIT_USDT');
+  const btcParams = params('btc', 'rub', 0, btcLimit as number);
+  const usdtParams = params('usdt', 'rub', 0, usdtLimit as number);
+
+  const btcIs = await redis.getConfig('POLLING_DEALS_BTC');
+  let btcDeals = [] as DealGet[];
+  if (btcIs) {
+    logger.info(`Получение списка с данными ${JSON.stringify(btcParams)}`);
+    const btcDealsPre = (await browser.evalute({ code: code(btcParams) })) as DealGet[] | null;
+    if (!Array.isArray(btcDealsPre)) return logger.warn(`Запрос на сделки btc не успешный, отмена итерации`);
+    btcDeals = btcDealsPre;
+    logger.log(`Получено ${btcDeals.length}`);
+    const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_BTC')) as number;
+    if (btcDeals.length !== limit) {
+      logger.warn(`Список btc не равен лимиту (${btcDeals.length}, ${limit})`);
+      return;
+    }
+  }
+
+  const usdtIs = await redis.getConfig('POLLING_DEALS_USDT');
+  let usdtDeals = [] as DealGet[];
+  if (usdtIs) {
+    logger.info(`Получение списка с данными ${JSON.stringify(usdtParams)}`);
+    const usdtDealsPre = (await browser.evalute({ code: code(usdtParams) })) as DealGet[] | null;
+    if (!Array.isArray(usdtDealsPre)) return logger.warn(`Запрос на сделки usdt не успешный, отмена итерации`);
+    usdtDeals = usdtDealsPre;
+    logger.log(`Получено ${usdtDeals.length}`);
+    const limit = (await redis.getConfig('POLLING_DEALS_LIMIT_USDT')) as number;
+    if (usdtDeals.length !== limit) {
+      logger.warn(`Список usdt не равен лимиту (${usdtDeals.length}, ${limit})`);
+      return;
+    }
+  }
+
+  const getNewDeals = async (deals: DealGet[]) => {
+    const oldDeals = await redis.getCacheDeals();
+
+    const findNewDeals = deals
+      .filter((now) => {
+        const candidate = oldDeals.find((old) => now.id === old.id);
+        const actualState = ['proposed'];
+        return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
+      })
+      .map((now) => ({ id: now.id, state: now.state }));
+
+    return findNewDeals;
+  };
+
+  let newDeals = [] as CacheDeal[];
+  const allDeals = btcDeals.concat(usdtDeals);
+  newDeals = newDeals.concat(await getNewDeals(allDeals));
+
+  logger.info(`Общее количество сделок ${allDeals.length}`);
+  logger.info(`Количество новых сделок ${newDeals.length}`);
+  logger.log(`Обновление списка в памяти`);
+  await redis.setCacheDeal(allDeals);
+
+  if (newDeals.length > 0) logger.log(`Отправляем на панику сделки`);
+  for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
+    const deal = newDeals[indexNewDeal];
+    redis.setPanikDeal(deal.id);
+  }
+}
+
+async function panikDeal(redis: Remote<WorkerRedis>) {
+  const deals = await redis.getsPanikDeal();
+  if (deals === false) return;
+  const [delay, tgId, mainPort] = (await redis.getsConfig(['DELAY_PANIK_DEAL', 'TG_ID', 'PORT'])) as [number, number, number];
+  for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
+    const deal = deals[indexDeal];
+    const now = Date.now();
+    if (now - deal.now > delay) {
+      await sendTgNotify(`(sky-monitor) Заявка ${deal.id} не пришло уведомление об обработки, паника`, tgId, mainPort);
+    }
+  }
+}
+
 const main = () =>
   new Promise<number>(() => {
     // workers
@@ -220,6 +294,8 @@ const main = () =>
       browser.updateKeys().then(() => {
         loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
         pollingCurse(redis, updateCurse.bind(null, redis, browser));
+        pollingDeals(redis, getDeals.bind(null, redis, browser));
+        pollingPanik(redis, panikDeal.bind(null, redis));
       });
     };
 

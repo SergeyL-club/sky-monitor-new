@@ -14,6 +14,27 @@ export type KeyOfConfig = keyof typeof CONFIG;
 export type TypeOfConfig = typeof CONFIG;
 export type ValueType = TypeOfConfig[keyof TypeOfConfig];
 
+export type DealGet = {
+  amount: number;
+  amount_currency: number;
+  broker_id: string;
+  created_at: string;
+  currency: string;
+  dispute: boolean;
+  id: string;
+  is_lot_owner: boolean;
+  lot_id: string;
+  opponent: string;
+  state: string;
+  symbol: string;
+  type: string;
+};
+
+export type CacheDeal = {
+  id: string;
+  state: string;
+};
+
 // channels
 // let browser: Remote<WorkerBrowser> | null = null;
 // let server: Remote<WorkerServer> | null = null;
@@ -100,6 +121,76 @@ class WorkerRedis {
       return true;
     } catch {
       return false;
+    }
+  };
+
+  setPanikDeal = async (dealId: string) => {
+    try {
+      const now = Date.now();
+      const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
+      await this.redis.set(`${path}:${dealId}`, String(now));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  getPanikDeal = async (dealId: string) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
+      const now = await this.redis.get(`${path}:${dealId}`);
+      return now ? { id: dealId, now: Number(now) } : false;
+    } catch {
+      return false;
+    }
+  };
+
+  getsPanikDeal = async () => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
+      const keys = await this.redis.keys(`${path}:*`);
+      const deals = [] as { id: string; now: number }[];
+      for (let indexDeal = 0; indexDeal < keys.length; indexDeal++) {
+        const path = keys[indexDeal];
+        const select = path.split(':');
+        const now = await this.redis.get(path);
+        if (now) deals.push({ id: select[select.length - 1], now: Number(now) });
+      }
+
+      return deals;
+    } catch {
+      return false;
+    }
+  };
+
+  setCacheDeal = async (deals: CacheDeal[]) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      await this.redis.set(path, JSON.stringify(deals));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  delPanikDeal = async (dealId: string) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
+      await this.redis.del(`${path}:${dealId}`);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  getCacheDeals = async (): Promise<CacheDeal[]> => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      const data = await this.redis.get(path);
+      if (!data) return [];
+      return JSON.parse(data);
+    } catch {
+      return [];
     }
   };
 
