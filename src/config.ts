@@ -36,7 +36,7 @@ export const URL_MAIN: string = 'https://skycrypto.me/deals'; // ссылка п
 export const CNT_EVALUTE: number = 3;
 export const DELAY_CNT: number = 5000;
 
-// конфиг обновлений циклов
+// конфиг обновлений циклов (курс)
 export const POLLING_CURSE: boolean = false;
 export const DELAY_CURSE_DEALS: number = 30000;
 export const DELAY_CURSE_ARAGE_DEALS: number = 5000;
@@ -52,7 +52,7 @@ export const DELAY_POLLING_DEALS: number = 10000;
 export const POLLING_DEALS_LIMIT_BTC: number = 20;
 export const POLLING_DEALS_LIMIT_USDT: number = 20;
 
-// delay panik
+// параметры самого цикла паники
 export const PANIK_DEALS: boolean = false;
 export const DELAY_PANIK_DEALS_TIMER: number = 5000;
 export const DELAY_PANIK_DEAL: number = 30000;
