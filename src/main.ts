@@ -290,12 +290,14 @@ const main = () =>
       workerRedis.postMessage({ command: 'exit', code: 1 });
     });
 
-    const next = () => {
+    const next = async () => {
       browser.updateKeys();
       // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
       pollingCurse(redis, updateCurse.bind(null, redis, browser));
-      pollingDeals(redis, getDeals.bind(null, redis, browser));
       pollingPanik(redis, panikDeal.bind(null, redis));
+
+      await delay(5000);
+      pollingDeals(redis, getDeals.bind(null, redis, browser));
     };
 
     const headless = process.argv.includes('--headless');
