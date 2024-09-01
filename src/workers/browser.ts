@@ -328,7 +328,6 @@ class WorkerBrowser {
   };
 
   private evaluteCycleRow = async () => {
-    loggerBrowser.log({ obj: this.evaluteRows });
     if (this.evaluteRows.length > 0) {
       const data = this.evaluteRows.shift();
       if (!data) return;
