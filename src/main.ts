@@ -7,7 +7,7 @@ import type { CacheDeal, DealGet, KeyOfConfig } from './workers/redis.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
-import logger, { loggerBrowser } from './utils/logger.js';
+import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingCurse, pollingDeals, pollingPanik } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
@@ -295,8 +295,6 @@ const main = () =>
       // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
       pollingCurse(redis, updateCurse.bind(null, redis, browser));
       pollingPanik(redis, panikDeal.bind(null, redis));
-
-      await delay(5000);
       pollingDeals(redis, getDeals.bind(null, redis, browser));
     };
 

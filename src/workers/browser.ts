@@ -476,7 +476,7 @@ class WorkerBrowser {
           return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
-        await this.waitReCode();
+        if (!code.includes('getCodeData')) await this.waitReCode();
         await this.waitReAuth();
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
