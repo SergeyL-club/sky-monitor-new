@@ -328,11 +328,14 @@ class WorkerBrowser {
   };
 
   private evaluteCycleRow = async () => {
-    loggerBrowser.log({ obj: this.evaluteRows });
     if (this.evaluteRows.length > 0) {
       const data = this.evaluteRows.shift();
       if (!data) return;
-      data.callback(await this.evaluteFunc({ page: data.page, code: data.code }));
+      Promise.resolve(() => {
+        this.evaluteFunc({ page: data.page, code: data.code }).then((value) => {
+          data.callback(value as string | null);
+        });
+      });
     }
   };
 
