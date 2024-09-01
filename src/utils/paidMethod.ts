@@ -87,8 +87,8 @@ export async function sendGet(url: string): Promise<string | false> {
   });
 }
 
-export async function sendTgNotify(str: string, chat_id: number, port: number) {
-  https.get('https://api.telegram.org/bot1011294800:AAHJ51OwsdglVetposO1NuDit4QKK4p2yUw/sendMessage?chat_id=' + chat_id + '&text=' + encodeURI(str)).on('error', (e) => {
+export async function sendTgNotify(str: string, chat_id: number, port: number, tg_token = '1011294800:AAHJ51OwsdglVetposO1NuDit4QKK4p2yUw') {
+  https.get(`https://api.telegram.org/bot${tg_token}/sendMessage?chat_id=` + chat_id + '&text=' + encodeURI(str)).on('error', (e) => {
     console.error(e);
   });
   if (str.includes('Паника')) {

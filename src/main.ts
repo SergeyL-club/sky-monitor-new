@@ -186,7 +186,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
         const actualState = ['proposed'];
         return (!candidate || now.state !== candidate.state) && actualState.includes(now.state);
       })
-      .map((now) => ({ id: now.id, state: now.state }));
+      .map((now) => ({ id: now.id, state: now.state, symbol: now.symbol.toUpperCase() }));
 
     return findNewDeals;
   };
@@ -203,19 +203,19 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   if (newDeals.length > 0) logger.log(`Отправляем на панику сделки`);
   for (let indexNewDeal = 0; indexNewDeal < newDeals.length; indexNewDeal++) {
     const deal = newDeals[indexNewDeal];
-    redis.setPanikDeal(deal.id);
+    redis.setPanikDeal(deal.id, deal.symbol);
   }
 }
 
 async function panikDeal(redis: Remote<WorkerRedis>) {
   const deals = await redis.getsPanikDeal();
   if (deals === false) return;
-  const [delay, tgId, mainPort] = (await redis.getsConfig(['DELAY_PANIK_DEAL', 'TG_ID', 'PORT'])) as [number, number, number];
+  const [delay, tgId, mainPort, botToken, nickname] = (await redis.getsConfig(['DELAY_PANIK_DEAL', 'TG_ID', 'PORT', 'PANIK_BOT_TOKEN', 'PANIK_NICKNAME'])) as [number, number, number, string, string];
   for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
     const deal = deals[indexDeal];
     const now = Date.now();
     if (now - deal.now > delay) {
-      await sendTgNotify(`(sky-monitor) Заявка ${deal.id} не пришло уведомление об обработки, паника`, tgId, mainPort);
+      await sendTgNotify(`${nickname} ${deal.symbol} Не получено подтверждение по сделки ${deal.id}`, tgId, mainPort, botToken);
     }
   }
 }

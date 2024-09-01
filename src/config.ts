@@ -56,6 +56,8 @@ export const POLLING_DEALS_LIMIT_USDT: number = 20;
 export const PANIK_DEALS: boolean = false;
 export const DELAY_PANIK_DEALS_TIMER: number = 5000;
 export const DELAY_PANIK_DEAL: number = 30000;
+export const PANIK_BOT_TOKEN: string = '7182805633:AAEqnGu7bosOIDa7I0SubePo0QUHfmOHSck';
+export const PANIK_NICKNAME: string = '000yy';
 
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;

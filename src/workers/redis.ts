@@ -33,6 +33,7 @@ export type DealGet = {
 export type CacheDeal = {
   id: string;
   state: string;
+  symbol: string;
 };
 
 // channels
@@ -124,11 +125,11 @@ class WorkerRedis {
     }
   };
 
-  setPanikDeal = async (dealId: string) => {
+  setPanikDeal = async (dealId: string, symbol: string) => {
     try {
       const now = Date.now();
       const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
-      await this.redis.set(`${path}:${dealId}`, String(now));
+      await this.redis.set(`${path}:${dealId}`, JSON.stringify({ id: dealId, now, symbol }));
       return true;
     } catch {
       return false;
@@ -139,7 +140,7 @@ class WorkerRedis {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
       const now = await this.redis.get(`${path}:${dealId}`);
-      return now ? { id: dealId, now: Number(now) } : false;
+      return now ? JSON.parse(now) : false;
     } catch {
       return false;
     }
@@ -149,12 +150,12 @@ class WorkerRedis {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
       const keys = await this.redis.keys(`${path}:*`);
-      const deals = [] as { id: string; now: number }[];
+      const deals = [] as { id: string; now: number; symbol: string }[];
       for (let indexDeal = 0; indexDeal < keys.length; indexDeal++) {
         const path = keys[indexDeal];
         const select = path.split(':');
         const now = await this.redis.get(path);
-        if (now) deals.push({ id: select[select.length - 1], now: Number(now) });
+        if (now) deals.push(JSON.parse(now));
       }
 
       return deals;
