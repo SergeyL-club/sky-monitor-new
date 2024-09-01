@@ -105,11 +105,13 @@ class WorkerBrowser {
   private page: Page | null;
   private browser: Browser | null;
   private isCodeUpdate: boolean;
+  private isErrorEvalute: boolean;
 
   constructor() {
     this.proxyParams = '';
     this.isReAuth = false;
-    this, (this.isCodeUpdate = false);
+    this.isCodeUpdate = false;
+    this.isErrorEvalute = false;
     this.browser = null;
     this.page = null;
     this.authKey = '';
@@ -353,6 +355,23 @@ class WorkerBrowser {
       res(false);
     });
 
+  waitReErrorEvalute = (): Promise<boolean> =>
+    new Promise((res) => {
+      let cnt = 0;
+      let isDelay = false;
+
+      while (cnt < 250) {
+        isDelay = true;
+        delay(100).then(() => (isDelay = false));
+        if (!this.isErrorEvalute) {
+          res(true);
+          return;
+        }
+        if (!isDelay) cnt++;
+      }
+      res(false);
+    });
+
   reload = async (url: string, page: Page, count = 1): Promise<void> => {
     try {
       await this.goto(page, 'about:blank');
@@ -465,19 +484,24 @@ class WorkerBrowser {
     } catch (error: unknown) {
       loggerBrowser.error(error);
       if (cnt < maxCnt) {
+        await this.waitReErrorEvalute();
+        this.isErrorEvalute = true;
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
           if (!(await this.authRefreshEvalute())) await this.authEvalute();
+          this.isErrorEvalute = false;
           return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
         if (String(error).includes('412') && String(error).includes('Precondition Failed') && !this.isCodeUpdate) {
           await this.updateKeysCode();
+          this.isErrorEvalute = false;
           return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
         if (!code.includes('getCodeData')) await this.waitReCode();
         await this.waitReAuth();
+        this.isErrorEvalute = false;
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
