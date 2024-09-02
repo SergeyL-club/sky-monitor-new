@@ -336,11 +336,14 @@ class WorkerBrowser {
         this.evaluteRows.splice(dataIndex, 1);
       } else data = this.evaluteRows.shift();
       if (!data) return;
-      this.evaluteFunc({ page: data.page, code: data.code })
-        .then((value) => {
-          data.callback(value as string | null);
-        })
-        .catch(() => data.callback(null));
+      if (dataIndex !== -1) {
+        data.callback(await this.evaluteFunc({ page: data.page, code: data.code }));
+      } else
+        this.evaluteFunc({ page: data.page, code: data.code })
+          .then((value) => {
+            data.callback(value as string | null);
+          })
+          .catch(() => data.callback(null));
     }
   };
 
