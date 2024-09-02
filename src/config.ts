@@ -63,6 +63,6 @@ export const PANIK_NICKNAME: string = '000yy';
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
 export const DATA_PATH_REDIS_PANIK_DEALS: string = `sky-monitor-new:panik:deals`;
 export const DATA_PATH_REDIS_RATES_CACHE: string = `sky-monitor-new:rates`;
-export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky-new:deals:cache`;
+export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky-monitor-new:deals:cache`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;
