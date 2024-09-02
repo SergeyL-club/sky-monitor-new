@@ -141,8 +141,7 @@ worker.on('config-set', async (request, reply) => {
 worker.on('logs', async (request, reply) => {
   const query: RequestQueryGetLog = request.query as RequestQueryGetLog;
   console.log(query.date);
-  if (query.date) query.date = JSON.parse(`${query.date}`);
-  const date = query.date ? `${query.date[0]}-${query.date[1]}-${query.date[2]}` : getDate({ isMore: 'formatDate' });
+  const date = query.date ? query.date : getDate({ isMore: 'formatDate' });
   const fs = resolve(dirname(fileURLToPath(import.meta.url)), `../../logs/${date}/[${date}]console_${query.type ?? 'all'}.log`);
   reply.type('text/html');
 
