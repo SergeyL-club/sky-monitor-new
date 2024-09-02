@@ -184,7 +184,10 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
       .filter((now) => {
         const candidate = oldDeals.find((old) => now.id === old.id);
         const actualState = ['proposed'];
-        return !candidate || (now.state !== candidate.state && actualState.includes(now.state));
+        const isNow = candidate === undefined;
+        const isState = actualState.includes(now.state);
+        const isNowState = !isNow && now.state !== candidate.state && isState;
+        return (isNow && isState) || isNowState;
       })
       .map((now) => ({ id: now.id, state: now.state, symbol: now.symbol.toUpperCase() }));
 
