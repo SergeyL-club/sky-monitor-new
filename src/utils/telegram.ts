@@ -80,69 +80,71 @@ class TelegramAPI {
       this.add(
         () =>
           new Promise((resolve) => {
-            this.generateTelegram(redis, symbol).then(({ client, botName }) => {
-              const adsIdPath = `/l${adsId}`;
-              try {
-                client.getDialogs().then((dialogs) => {
-                  const botDialog = dialogs.find((dialog) => dialog.isUser && dialog.name === botName);
-                  if (botDialog?.entity) {
-                    const event = new NewMessage();
-                    const handler = async (update: Api.UpdateNewMessage) => {
-                      const message = update.message as Api.Message;
-                      client.removeEventHandler(handler, event);
-                      if (message.replyMarkup) {
-                        const btnLimit = (message.replyMarkup as Api.ReplyInlineMarkup).rows
-                          .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes('Лимиты')))
-                          ?.buttons.find((btn) => btn.text.includes('Лимиты')) as Api.KeyboardButtonCallback;
-                        const eventLimit = new NewMessage();
-                        const handlerLimit = async (update: Api.UpdateNewMessage) => {
-                          const messageLimit = update.message as Api.Message;
-                          client.removeEventHandler(handlerLimit, eventLimit);
-                          if (messageLimit.text.includes('Введите новые лимиты')) {
-                            const eventOk = new NewMessage();
-                            const handlerOk = async (update: Api.UpdateNewMessage) => {
-                              const messageOk = update.message as Api.Message;
-                              client.removeEventHandler(handlerOk, eventOk);
-                              if (messageOk.text.includes('Готово') || messageOk.text.includes('Заявка')) {
-                                await client.disconnect();
-                                resolve(true);
-                              } else {
-                                await client.disconnect();
-                                resolve(false);
-                              }
-                            };
+            this.generateTelegram(redis, symbol)
+              .then(({ client, botName }) => {
+                const adsIdPath = `/l${adsId}`;
+                try {
+                  client.getDialogs().then((dialogs) => {
+                    const botDialog = dialogs.find((dialog) => dialog.isUser && dialog.name === botName);
+                    if (botDialog?.entity) {
+                      const event = new NewMessage();
+                      const handler = async (update: Api.UpdateNewMessage) => {
+                        const message = update.message as Api.Message;
+                        client.removeEventHandler(handler, event);
+                        if (message.replyMarkup) {
+                          const btnLimit = (message.replyMarkup as Api.ReplyInlineMarkup).rows
+                            .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes('Лимиты')))
+                            ?.buttons.find((btn) => btn.text.includes('Лимиты')) as Api.KeyboardButtonCallback;
+                          const eventLimit = new NewMessage();
+                          const handlerLimit = async (update: Api.UpdateNewMessage) => {
+                            const messageLimit = update.message as Api.Message;
+                            client.removeEventHandler(handlerLimit, eventLimit);
+                            if (messageLimit.text.includes('Введите новые лимиты')) {
+                              const eventOk = new NewMessage();
+                              const handlerOk = async (update: Api.UpdateNewMessage) => {
+                                const messageOk = update.message as Api.Message;
+                                client.removeEventHandler(handlerOk, eventOk);
+                                if (messageOk.text.includes('Готово') || messageOk.text.includes('Заявка')) {
+                                  await client.disconnect();
+                                  resolve(true);
+                                } else {
+                                  await client.disconnect();
+                                  resolve(false);
+                                }
+                              };
 
-                            client.addEventHandler(handlerOk, eventOk);
-                            await client.sendMessage(botDialog.entity!, { message: `${min}-${max}` });
-                          } else {
+                              client.addEventHandler(handlerOk, eventOk);
+                              await client.sendMessage(botDialog.entity!, { message: `${min}-${max}` });
+                            } else {
+                              await client.disconnect();
+                              resolve(false);
+                            }
+                          };
+
+                          client.addEventHandler(handlerLimit, eventLimit);
+                          if (!btnLimit) {
                             await client.disconnect();
                             resolve(false);
                           }
-                        };
-
-                        client.addEventHandler(handlerLimit, eventLimit);
-                        if (!btnLimit) {
-                          await client.disconnect();
-                          resolve(false);
+                          await client.invoke(
+                            new Api.messages.GetBotCallbackAnswer({
+                              peer: botDialog.entity,
+                              msgId: message.id,
+                              data: btnLimit.data,
+                            }),
+                          );
                         }
-                        await client.invoke(
-                          new Api.messages.GetBotCallbackAnswer({
-                            peer: botDialog.entity,
-                            msgId: message.id,
-                            data: btnLimit.data,
-                          }),
-                        );
-                      }
-                    };
-                    client.addEventHandler(handler, event);
+                      };
+                      client.addEventHandler(handler, event);
 
-                    Promise.resolve(client.sendMessage(botDialog.entity, { message: adsIdPath }));
-                  }
-                });
-              } catch (error: unknown) {
-                client.disconnect().then(() => reject(error));
-              }
-            });
+                      Promise.resolve(client.sendMessage(botDialog.entity, { message: adsIdPath }));
+                    }
+                  });
+                } catch (error: unknown) {
+                  client.disconnect().then(() => reject(error));
+                }
+              })
+              .catch(console.error);
           }),
       )
         .then(resolve)
