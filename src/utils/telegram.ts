@@ -153,12 +153,15 @@ class TelegramAPI {
         () =>
           new Promise<boolean>((resolve) => {
             this.generateTelegram(redis, symbol).then(({ client, botName }) => {
+              console.log('telegram start event 1');
               const adsIdPath = `/l${adsId}`;
               try {
                 client.getDialogs().then((dialogs) => {
+                  console.log('telegram start event 2');
                   const botDialog = dialogs.find((dialog) => dialog.isUser && dialog.name === botName);
                   if (botDialog?.entity) {
                     client.sendMessage(botDialog.entity, { message: adsIdPath }).then(async () => {
+                      console.log('telegram start event 3');
                       const delayTg = (await redis.getConfig('TG_DELAY_MESSAGE')) as number;
                       await delay(delayTg);
                       const lastMessagesAds = await client.getMessages(botDialog.entity, { limit: 1 });
@@ -176,6 +179,7 @@ class TelegramAPI {
                         await delay(delayTg);
                         const lastMessagesCurse = await client.getMessages(botDialog.entity, { limit: 1 });
                         if (lastMessagesCurse.length > 0 && lastMessagesCurse[0].text.includes('Введите новый курс')) {
+                          console.log('telegram start event 4');
                           await client.sendMessage(botDialog.entity!, { message: `${curse}` });
                           await delay(delayTg);
                           const lastMessagesOk = await client.getMessages(botDialog.entity, { limit: 1 });
