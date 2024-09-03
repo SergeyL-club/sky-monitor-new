@@ -64,18 +64,20 @@ class TelegramAPI {
     client.setLogLevel(LogLevel.DEBUG);
 
     console.log('start telegram');
-    await client
-      .start({
+    try {
+      await client.start({
         phoneNumber: async () => '',
         password: async () => '',
         phoneCode: async () => '',
         onError: (err) => loggerCore.error(err),
-      })
-      .then(console.log)
-      .catch(console.error);
-    console.log('end start telegram');
+      });
+      console.log('end start telegram');
 
-    return { client, botName };
+      return { client, botName };
+    } catch (error: unknown) {
+      console.error(error);
+      throw error;
+    }
   }
 
   setAdsLimit = async (redis: Remote<WorkerRedis>, adsId: string, min: number, max: number, symbol: 'btc' | 'usdt' = 'btc') =>
