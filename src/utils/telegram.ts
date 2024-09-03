@@ -67,12 +67,15 @@ class TelegramAPI {
     const read = readline.createInterface({ input: stdin, output: stdout });
 
     console.log('start telegram');
-    await client.start({
-      phoneNumber: async () => new Promise((resolve) => read.question('number', resolve)),
-      password: async () => new Promise((resolve) => read.question('password', resolve)),
-      phoneCode: async () => new Promise((resolve) => read.question('code', resolve)),
-      onError: (err) => loggerCore.error(err),
-    });
+    await client
+      .start({
+        phoneNumber: async () => new Promise((resolve) => read.question('number', resolve)),
+        password: async () => new Promise((resolve) => read.question('password', resolve)),
+        phoneCode: async () => new Promise((resolve) => read.question('code', resolve)),
+        onError: (err) => loggerCore.error(err),
+      })
+      .then(console.log)
+      .catch(console.error);
     console.log('end start telegram');
 
     return { client, botName };
