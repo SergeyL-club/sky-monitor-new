@@ -177,8 +177,10 @@ class WorkerRedis {
   delPanikDeal = async (dealId: string) => {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
+      const data = await this.redis.get(`${path}:${dealId}`);
       await this.redis.del(`${path}:${dealId}`);
-      return true;
+      if (data) return true;
+      else return false;
     } catch {
       return false;
     }

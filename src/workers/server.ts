@@ -88,6 +88,7 @@ class WorkerServer {
       const keys = Object.keys(this.listen);
       if ('deal_process' in query) {
         const isDel = await redis?.delPanikDeal(query['deal_process'] as string);
+        if (isDel === false) parentPort?.postMessage({ command: 'deal_process', id: query['deal_process'] });
         return reply.status(200).send(`is? (${isDel})`);
       }
       if ('deal_del' in query) {

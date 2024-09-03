@@ -56,6 +56,8 @@ type Broker = {
   name: string;
 };
 
+const listDelDeals: string[] = [];
+
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
   const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
@@ -216,6 +218,13 @@ async function panikDeal(redis: Remote<WorkerRedis>) {
   const [delay, tgId, mainPort, botToken, nickname] = (await redis.getsConfig(['DELAY_PANIK_DEAL', 'TG_ID', 'PORT', 'PANIK_BOT_TOKEN', 'PANIK_NICKNAME'])) as [number, number, number, string, string];
   for (let indexDeal = 0; indexDeal < deals.length; indexDeal++) {
     const deal = deals[indexDeal];
+    const listIndexDeal = listDelDeals.findIndex((id) => deal.id === id);
+    if (listIndexDeal !== -1) {
+      listDelDeals.splice(listIndexDeal, 1);
+      await redis.delPanikDeal(deal.id);
+      continue;
+    }
+
     const now = Date.now();
     if (now - deal.now > delay) {
       await sendTgNotify(`${nickname} ${deal.symbol} Не получено подтверждение по сделки ${deal.id}`, tgId, mainPort, botToken);
@@ -311,6 +320,13 @@ const main = () =>
           initBrowser();
         });
     };
+
+    // on message server
+    workerServer.on('message', (message) => {
+      if ('command' in message && message['command'] === 'deal_process') {
+        listDelDeals.push(message['id']);
+      }
+    });
 
     try {
       redis.initClient().then(() => {
