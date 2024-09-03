@@ -305,9 +305,9 @@ const main = () =>
     const next = async () => {
       browser.updateKeys();
       // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-      pollingCurse(redis, updateCurse.bind(null, redis, browser));
-      pollingPanik(redis, panikDeal.bind(null, redis));
-      pollingDeals(redis, getDeals.bind(null, redis, browser));
+      Promise.resolve(pollingCurse(redis, updateCurse.bind(null, redis, browser)));
+      Promise.resolve(pollingPanik(redis, panikDeal.bind(null, redis)));
+      Promise.resolve(pollingDeals(redis, getDeals.bind(null, redis, browser)));
     };
 
     const headless = process.argv.includes('--headless');
