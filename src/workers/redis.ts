@@ -1,4 +1,4 @@
-import type { PuppeteerLifeCycleEvent } from 'puppeteer';
+// import type { PuppeteerLifeCycleEvent } from 'puppeteer';
 // import type WorkerBrowser from './browser.js';
 // import type WorkerServer from './server.js';
 // import type { Remote } from 'comlink';
@@ -153,7 +153,6 @@ class WorkerRedis {
       const deals = [] as { id: string; now: number; symbol: string }[];
       for (let indexDeal = 0; indexDeal < keys.length; indexDeal++) {
         const path = keys[indexDeal];
-        const select = path.split(':');
         const now = await this.redis.get(path);
         if (now) deals.push(JSON.parse(now));
       }
