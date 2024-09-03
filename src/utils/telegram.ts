@@ -64,7 +64,7 @@ class TelegramAPI {
     // client.setLogLevel(LogLevel.NONE);
 
     console.log('start telegram');
-    await client
+    client
       .start({
         phoneNumber: async () => '',
         password: async () => '',
