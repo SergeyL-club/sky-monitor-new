@@ -8,8 +8,6 @@ import loggerCore from './logger.js';
 import { NewMessage } from 'telegram/events/NewMessage.js';
 import { LogLevel } from 'telegram/extensions/Logger.js';
 import { delay } from './dateTime.js';
-import readline from 'node:readline';
-import { stdin, stdout } from 'node:process';
 
 class TelegramAPI {
   private queue: (() => Promise<void>)[];
@@ -64,14 +62,13 @@ class TelegramAPI {
       connectionRetries: 5,
     });
     // client.setLogLevel(LogLevel.NONE);
-    const read = readline.createInterface({ input: stdin, output: stdout });
 
     console.log('start telegram');
     await client
       .start({
-        phoneNumber: async () => new Promise((resolve) => read.question('number', resolve)),
-        password: async () => new Promise((resolve) => read.question('password', resolve)),
-        phoneCode: async () => new Promise((resolve) => read.question('code', resolve)),
+        phoneNumber: async () => '',
+        password: async () => '',
+        phoneCode: async () => '',
         onError: (err) => loggerCore.error(err),
       })
       .then(console.log)
