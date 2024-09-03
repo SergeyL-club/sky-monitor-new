@@ -189,7 +189,7 @@ worker.on('menu', async (request, reply) => {
     html += `<span style='display:flex;gap:10px;margin-top:5px;flex-direction:row;'>Значение CONFIG[${key}]: ${valueHtml}</span>`;
   }
   const code = `function setConfig(key, value){
-    const fetchConfig = (key, value) => fetch(window.location.origin + "/?command=config-set&name=" + key + "&value=" + encodeURIComponent('value') + "&menu=true");
+    const fetchConfig = (key, value) => fetch(window.location.origin + "/?command=config-set&name=" + key + "&value=" + encodeURIComponent(\`\$\{value\}\`) + "&menu=true");
     if (typeof value === "boolean") {
       const button = document.getElementById(key);
       const bool = button.dataset.value == "false" ? true : false;
