@@ -60,7 +60,8 @@ class TelegramAPI {
     const client = new TelegramClient(new StringSession(String(stringSession)), Number(apiId), apiHash, {
       connectionRetries: 5,
     });
-    client.setLogLevel(LogLevel.NONE);
+    console.log(apiId, apiHash, stringSession, botName);
+    client.setLogLevel(LogLevel.DEBUG);
 
     try {
       await client.start({
