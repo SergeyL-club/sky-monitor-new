@@ -73,7 +73,8 @@ class TelegramAPI {
       })
       .then(console.log)
       .catch(console.error);
-    console.log('end start telegram');
+    const is = await client.connect();
+    console.log('end start telegram', is);
 
     return { client, botName };
   }
