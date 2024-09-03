@@ -60,7 +60,7 @@ class TelegramAPI {
     const client = new TelegramClient(new StringSession(String(stringSession)), apiId, apiHash, {
       connectionRetries: 5,
     });
-    client.setLogLevel(LogLevel.NONE);
+    // client.setLogLevel(LogLevel.NONE);
 
     await client.start({
       phoneNumber: async () => '',
