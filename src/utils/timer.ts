@@ -2,7 +2,6 @@ import type { Remote } from 'comlink';
 import type WorkerRedis from '../workers/redis.js';
 
 import { delay, random } from './dateTime.js';
-import logger from './logger.js';
 
 export function pollingCurse(redis: Remote<WorkerRedis>, callback: () => void | Promise<void>) {
   redis.getConfig('POLLING_CURSE').then((polling) => {
@@ -13,7 +12,6 @@ export function pollingCurse(redis: Remote<WorkerRedis>, callback: () => void | 
         if (polling)
           Promise.resolve(callback()).finally(() => {
             const delta = delayCycleDelta - (Date.now() - start);
-            logger.log(`CURSE (${delta})!-------------------------------`);
             if (delta > 0) delay(delayCycleDelta).finally(() => pollingCurse.call(null, redis, callback));
             else pollingCurse.call(null, redis, callback);
           });
