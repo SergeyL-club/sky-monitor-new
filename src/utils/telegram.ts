@@ -60,7 +60,7 @@ class TelegramAPI {
     const stringSession = await redis.getConfig('TG_SESSION_API' as KeyOfConfig);
     const botName = (await redis.getConfig(('TG_NAME_BOT' + `_${symbol.toUpperCase()}`) as KeyOfConfig)) as string;
     console.log(apiId, apiHash, new StringSession(String(stringSession)), botName);
-    const client = new TelegramClient(new StringSession(String(stringSession)), apiId, apiHash, {
+    const client = new TelegramClient(new StringSession(String(stringSession)), Number(apiId), apiHash, {
       connectionRetries: 5,
     });
     // client.setLogLevel(LogLevel.NONE);
