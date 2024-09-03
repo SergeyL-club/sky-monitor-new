@@ -61,10 +61,10 @@ class TelegramAPI {
     const client = new TelegramClient(new StringSession(String(stringSession)), Number(apiId), apiHash, {
       connectionRetries: 5,
     });
-    // client.setLogLevel(LogLevel.NONE);
+    client.setLogLevel(LogLevel.DEBUG);
 
     console.log('start telegram');
-    client
+    await client
       .start({
         phoneNumber: async () => '',
         password: async () => '',
@@ -73,8 +73,7 @@ class TelegramAPI {
       })
       .then(console.log)
       .catch(console.error);
-    const is = await client.connect();
-    console.log('end start telegram', is);
+    console.log('end start telegram');
 
     return { client, botName };
   }
