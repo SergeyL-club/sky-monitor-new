@@ -57,10 +57,11 @@ class TelegramAPI {
     const apiHash = (await redis.getConfig('TG_HASH_API')) as string;
     const stringSession = await redis.getConfig('TG_SESSION_API' as KeyOfConfig);
     const botName = (await redis.getConfig(('TG_NAME_BOT' + `_${symbol.toUpperCase()}`) as KeyOfConfig)) as string;
+    console.log(apiId, apiHash, stringSession, botName);
     const client = new TelegramClient(new StringSession(String(stringSession)), apiId, apiHash, {
       connectionRetries: 5,
     });
-    client.setLogLevel(LogLevel.NONE);
+    // client.setLogLevel(LogLevel.NONE);
 
     await client.start({
       phoneNumber: async () => '',
