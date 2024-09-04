@@ -494,12 +494,12 @@ class WorkerBrowser {
       loggerBrowser.error(error);
       if (cnt < maxCnt) {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
-        if (String(error).includes('401') && String(error).includes('Unauthorized') && !this.isReAuth) {
+        if (String(error).includes('401') && !this.isReAuth) {
           if (!(await this.authRefreshEvalute())) await this.authEvalute();
           return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
 
-        if (String(error).includes('412') && String(error).includes('Precondition Failed') && !this.isCodeUpdate) {
+        if (String(error).includes('412') && !this.isCodeUpdate) {
           await this.updateKeysCode();
           return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
         }
