@@ -51,8 +51,23 @@ export function pollingPanik(redis: Remote<WorkerRedis>, callback: () => void | 
   });
 }
 
+export function pollingNotify(redis: Remote<WorkerRedis>, callback: () => void | Promise<void>) {
+  redis.getConfig('POLLING_NOTIFY').then((polling) => {
+    redis.getConfig('DELAY_POLLING_NOTIFY').then((delayCycle) => {
+      const start = Date.now();
+      if (polling)
+        Promise.resolve(callback()).finally(() => {
+          const delta = (delayCycle as number) - (Date.now() - start);
+          if (delta > 0) delay(delayCycle as number).finally(() => pollingNotify.call(null, redis, callback));
+          else pollingNotify.call(null, redis, callback);
+        });
+      else delay(delayCycle as number).finally(() => pollingNotify.call(null, redis, callback));
+    });
+  });
+}
+
 export function pollingEvaluteCycle(callback: () => void | Promise<void>) {
   Promise.resolve(callback()).finally(() => {
-    delay(1000).finally(() => pollingEvaluteCycle.call(null, callback));
+    delay(250).finally(() => pollingEvaluteCycle.call(null, callback));
   });
 }

@@ -59,10 +59,17 @@ export const DELAY_PANIK_DEAL: number = 30000;
 export const PANIK_BOT_TOKEN: string = '7182805633:AAEqnGu7bosOIDa7I0SubePo0QUHfmOHSck';
 export const PANIK_NICKNAME: string = '000yy';
 
+// параметры цикла уведы сообщения
+export const POLLING_NOTIFY: boolean = false;
+export const DELAY_POLLING_NOTIFY: number = 10000;
+export const DELAY_NOTIFY: number = 1000;
+export const POLLING_NOTIFY_LIMIT: number = 20;
+
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
 export const DATA_PATH_REDIS_PANIK_DEALS: string = `sky-monitor-new:panik:deals`;
 export const DATA_PATH_REDIS_RATES_CACHE: string = `sky-monitor-new:rates`;
 export const DATA_PATH_REDIS_DEALS_CACHE: string = `sky-monitor-new:deals:cache`;
+export const DATA_PATH_REDIS_NOTIFY_CACHE: string = `sky-monitor-new:notifys:cache`;
 export const URL_REDIS: string = 'redis://127.0.0.1:6379';
 export const DB_REDIS: number = 0;

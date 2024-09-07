@@ -36,6 +36,11 @@ export type CacheDeal = {
   symbol: string;
 };
 
+export type CacheNotify = {
+  id: number;
+  sender?: string;
+};
+
 // channels
 // let browser: Remote<WorkerBrowser> | null = null;
 // let server: Remote<WorkerServer> | null = null;
@@ -163,16 +168,6 @@ class WorkerRedis {
     }
   };
 
-  setCacheDeal = async (deals: CacheDeal[]) => {
-    try {
-      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
-      await this.redis.set(path, JSON.stringify(deals));
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
   delPanikDeal = async (dealId: string) => {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_PANIK_DEALS')) as string;
@@ -185,9 +180,40 @@ class WorkerRedis {
     }
   };
 
+  setCacheDeal = async (deals: CacheDeal[]) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      await this.redis.set(path, JSON.stringify(deals));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   getCacheDeals = async (): Promise<CacheDeal[]> => {
     try {
       const path = (await this.getConfig('DATA_PATH_REDIS_DEALS_CACHE')) as string;
+      const data = await this.redis.get(path);
+      if (!data) return [];
+      return JSON.parse(data);
+    } catch {
+      return [];
+    }
+  };
+
+  setCacheNotify = async (notifys: CacheNotify[]) => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_NOTIFY_CACHE')) as string;
+      await this.redis.set(path, JSON.stringify(notifys));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  getCacheNotify = async (): Promise<CacheNotify[]> => {
+    try {
+      const path = (await this.getConfig('DATA_PATH_REDIS_NOTIFY_CACHE')) as string;
       const data = await this.redis.get(path);
       if (!data) return [];
       return JSON.parse(data);

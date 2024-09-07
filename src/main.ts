@@ -3,13 +3,13 @@ import type WorkerRedis from './workers/redis.js';
 import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
-import type { CacheDeal, DealGet, KeyOfConfig } from './workers/redis.js';
+import type { CacheDeal, CacheNotify, DealGet, KeyOfConfig } from './workers/redis.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
 import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
-import { pollingCurse, pollingDeals, pollingPanik } from './utils/timer.js';
+import { pollingCurse, pollingDeals, pollingNotify, pollingPanik } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
 import telegramApi from './utils/telegram.js';
 import { delay, random } from './utils/dateTime.js';
@@ -54,6 +54,14 @@ type Broker = {
   is_card: boolean;
   logo: string;
   name: string;
+};
+
+type Notify = {
+  created_ago: number;
+  details: null | { sender: string };
+  id: number;
+  is_read: boolean;
+  type: string;
 };
 
 const listDelDeals: string[] = [];
@@ -212,6 +220,37 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
   }
 }
 
+async function getNotifys(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
+  logger.info(`Получение списка уведомлений`);
+  const limit = (await redis.getConfig('POLLING_NOTIFY_LIMIT')) as number;
+  const evaluteFunc = `getLots("[accessKey]", "[authKey]", ${limit})`;
+  const notifys = (await browser.evalute({ code: evaluteFunc })) as Notify[] | null;
+  if (notifys === null) {
+    return logger.warn(`Не удалось получить список уведомлений`);
+  }
+  const oldNotifys = await redis.getCacheNotify();
+  const nowNotifys = [] as CacheNotify[];
+  for (let indexNotify = 0; indexNotify < notifys.length; indexNotify++) {
+    const notify = notifys[indexNotify];
+    if (notify.type === 'message') {
+      const candidate = oldNotifys.find((old) => old.id === notify.id);
+      if (!candidate) nowNotifys.push({ id: notify.id, sender: notify.details?.sender });
+    }
+  }
+
+  logger.info(`Количество новых уведомлений ${nowNotifys.length} (${oldNotifys.length}, ${notifys.length})`);
+  logger.log(`Обновление списка уведомлений`);
+  await redis.setCacheNotify(notifys.map((notify) => ({ id: notify.id, sender: notify.details?.sender })));
+
+  const [delayNotify, nickname, tgId, mainPort] = (await redis.getsConfig(['DELAY_NOTIFY', 'PANIK_NICKNAME', 'TG_ID', 'PORT'])) as [number, string, number, number];
+  for (let indexNotify = 0; indexNotify < nowNotifys.length; indexNotify++) {
+    const notify = nowNotifys[indexNotify];
+    if (indexNotify > 0) await delay(delayNotify);
+    logger.log({ obj: { ...notify, nickname, tgId, mainPort } }, `Отправляем уведомление о сообщении`);
+    await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
+  }
+}
+
 async function panikDeal(redis: Remote<WorkerRedis>) {
   const deals = await redis.getsPanikDeal();
   if (deals === false) return;
@@ -308,6 +347,7 @@ const main = () =>
       Promise.resolve(pollingCurse(redis, updateCurse.bind(null, redis, browser)));
       Promise.resolve(pollingPanik(redis, panikDeal.bind(null, redis)));
       Promise.resolve(pollingDeals(redis, getDeals.bind(null, redis, browser)));
+      Promise.resolve(pollingNotify(redis, getNotifys.bind(null, redis, browser)));
     };
 
     const headless = process.argv.includes('--headless');
