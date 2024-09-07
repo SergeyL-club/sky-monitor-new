@@ -86,6 +86,7 @@ export type DetailsDeal = {
 type EvaluteCallback = {
   page?: Page;
   code: string;
+  cnt: number;
   callback: (data: string | null) => void;
 };
 
@@ -336,14 +337,11 @@ class WorkerBrowser {
         this.evaluteRows.splice(dataIndex, 1);
       } else data = this.evaluteRows.shift();
       if (!data) return;
-      if (dataIndex !== -1) {
-        data.callback(await this.evaluteFunc({ page: data.page, code: data.code }));
-      } else
-        this.evaluteFunc({ page: data.page, code: data.code })
-          .then((value) => {
-            data.callback(value as string | null);
-          })
-          .catch(() => data.callback(null));
+      this.evaluteFunc({ page: data.page, code: data.code }, data.cnt)
+        .then((value) => {
+          data.callback(value as string | null);
+        })
+        .catch(() => data.callback(null));
     }
   };
 
@@ -496,26 +494,27 @@ class WorkerBrowser {
         loggerBrowser.warn(`Ошибка запроса (${localCode}), повторная попытка (${cnt + 1})`);
         if (String(error).includes('401') && !this.isReAuth) {
           if (!(await this.authRefreshEvalute())) await this.authEvalute();
-          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
+          return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
         if (String(error).includes('412') && !this.isCodeUpdate) {
           await this.updateKeysCode();
-          return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
+          return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
         if (!code.includes('getCodeData')) await this.waitReCode();
         if (!code.includes('refresh') || !code.includes('authPost')) await this.waitReAuth();
         await delay(delayCnt);
-        return await this.evaluteFunc<Type>({ page, code }, cnt + 1);
+        return await this.evalute<Type>({ page, code }, cnt + 1);
       }
       return null;
     }
   };
 
-  evalute = <Type>({ page, code }: { page?: Page; code: string }): Promise<Type | null> => {
+  evalute = <Type>({ page, code }: { page?: Page; code: string }, cnt = 0): Promise<Type | null> => {
     return new Promise<Type>((resolve) => {
       this.evaluteRows.push({
+        cnt,
         code,
         page,
         callback: (data) => resolve(data as Type),
