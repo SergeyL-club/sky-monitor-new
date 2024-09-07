@@ -12,6 +12,7 @@ const getNotify = async (token, key, limit) =>
     fetch(url, {
       method: 'GET',
       headers: headers,
+      signal: AbortSignal.timeout(10000),
     })
       .then(async (response) => {
         if (response.status === 200) {

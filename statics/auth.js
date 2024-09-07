@@ -19,6 +19,7 @@ const authPost = async (email, password) =>
       method: 'POST',
       headers: headers,
       body: JSON.stringify(data),
+      signal: AbortSignal.timeout(10000),
     })
       .then(async (response) => {
         if (response.status === 200) {
