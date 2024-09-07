@@ -66,7 +66,7 @@ type Notify = {
 
 type Message = {
   created_at: string;
-  media: null;
+  media: null | string;
   message: string;
   receiver: string;
   sender: string;
@@ -259,6 +259,7 @@ async function getNotifys(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
       const evaluteFuncMessages = `getMessages("[accessKey]", "[authKey]", "${notify.sender}")`;
       const messages = (await browser.evalute({ code: evaluteFuncMessages })) as Message[] | null;
       if (!messages || messages.length === 0) return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
+      if (messages[0].media) return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}, есть изображение: ${messages[0].media}`, tgId, mainPort);
       return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}, последнее сообщение: ${messages[0].message}`, tgId, mainPort);
     } else await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
   }
