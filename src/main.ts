@@ -256,7 +256,7 @@ async function getNotifys(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
     if (indexNotify > 0) await delay(delayNotify);
     logger.log({ obj: { ...notify, nickname, tgId, mainPort } }, `Отправляем уведомление о сообщении`);
     if (notify.sender) {
-      const evaluteFuncMessages = `getMessages("[accessKey]", "[authKey]", ${notify.sender})`;
+      const evaluteFuncMessages = `getMessages("[accessKey]", "[authKey]", "${notify.sender}")`;
       const messages = (await browser.evalute({ code: evaluteFuncMessages })) as Message[] | null;
       if (!messages || messages.length === 0) return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
       return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}, последнее сообщение: ${messages[0].message}`, tgId, mainPort);
