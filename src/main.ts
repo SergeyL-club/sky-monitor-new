@@ -64,6 +64,14 @@ type Notify = {
   type: string;
 };
 
+type Message = {
+  created_at: string;
+  media: null;
+  message: string;
+  receiver: string;
+  sender: string;
+};
+
 const listDelDeals: string[] = [];
 
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
@@ -247,7 +255,12 @@ async function getNotifys(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrow
     const notify = nowNotifys[indexNotify];
     if (indexNotify > 0) await delay(delayNotify);
     logger.log({ obj: { ...notify, nickname, tgId, mainPort } }, `Отправляем уведомление о сообщении`);
-    await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
+    if (notify.sender) {
+      const evaluteFuncMessages = `getMessages("[accessKey]", "[authKey]", ${notify.sender})`;
+      const messages = (await browser.evalute({ code: evaluteFuncMessages })) as Message[] | null;
+      if (!messages || messages.length === 0) return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
+      return await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}, последнее сообщение: ${messages[0].message}`, tgId, mainPort);
+    } else await sendTgNotify(`(sky, ${nickname}) Получено уведомление о сообщении от пользователя ${notify.sender}`, tgId, mainPort);
   }
 }
 
