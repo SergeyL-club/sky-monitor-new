@@ -502,8 +502,8 @@ class WorkerBrowser {
           return await this.evalute<Type>({ page, code }, cnt + 1);
         }
 
-        if (!code.includes('getCodeData')) await this.waitReCode();
-        if (!code.includes('refresh') || !code.includes('authPost')) await this.waitReAuth();
+        // if (!code.includes('getCodeData')) await this.waitReCode();
+        // if (!code.includes('refresh') || !code.includes('authPost')) await this.waitReAuth();
         await delay(delayCnt);
         return await this.evalute<Type>({ page, code }, cnt + 1);
       }
