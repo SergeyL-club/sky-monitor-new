@@ -223,7 +223,7 @@ async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowse
 async function getNotifys(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка уведомлений`);
   const limit = (await redis.getConfig('POLLING_NOTIFY_LIMIT')) as number;
-  const evaluteFunc = `getLots("[accessKey]", "[authKey]", ${limit})`;
+  const evaluteFunc = `getNotify("[accessKey]", "[authKey]", ${limit})`;
   const notifys = (await browser.evalute({ code: evaluteFunc })) as Notify[] | null;
   if (notifys === null) {
     return logger.warn(`Не удалось получить список уведомлений`);
