@@ -78,7 +78,7 @@ class WorkerTelegram {
       const client = new TelegramClient(new StringSession(String(stringSession)), Number(apiId), apiHash, {
         connectionRetries: 5,
       });
-      client.setLogLevel(LogLevel.NONE);
+      client.setLogLevel(LogLevel.DEBUG);
       this.client = client;
       await client.start({
         phoneNumber: async () => '',
@@ -225,6 +225,7 @@ class WorkerTelegram {
           const isVerif = 'SKY PAY V1: ✅';
           const isNoVerif = 'SKY PAY V1: ❌';
           const user = `/u${nickname}`;
+          console.log(user, '\n ---->');
           if (!this.client || !this.client.connected) {
             this.reconnect()
               .then((is) => {
@@ -247,6 +248,7 @@ class WorkerTelegram {
                 reject(error);
               });
           } else {
+            console.log(user, '\n ---->');
             const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
             if (!botDialog)
               this.getDialogBot(symbol)
@@ -262,9 +264,11 @@ class WorkerTelegram {
             const entity = botDialog?.entity;
             if (entity)
               this.client.sendMessage(entity, { message: user }).then(async () => {
+                console.log(user, '\n ---->');
                 const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
                 await delay(delayTg);
                 const lastMessagesAds = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+                console.log(user, '\n ---->');
                 if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isVerif)) {
                   resolve(true);
                 } else if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isNoVerif)) {
