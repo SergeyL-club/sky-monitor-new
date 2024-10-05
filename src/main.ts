@@ -395,6 +395,9 @@ const main = () =>
     const initBrowser = () => {
       browser
         .initBrowser(headless)
+        .then(async () => {
+          await telegram.connect();
+        })
         .then(next)
         .catch(() => {
           logger.warn(`Не удалось запустить браузер, попытка запустить`);
