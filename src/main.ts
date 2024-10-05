@@ -77,7 +77,7 @@ const listDelDeals: string[] = [];
 
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, telegram: Remote<WorkerTelegram>) {
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
-  const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
+  const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub', lot_type: "sell" })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
   if (!Array.isArray(lots)) return logger.warn(`Не найден список заявок в запросе`);
 
