@@ -140,12 +140,16 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       continue;
     }
 
+    logger.log(`Найдены конкуренты, производим проверки`);
     for (let indexCandidate = 0; indexCandidate < candidates.length; indexCandidate++) {
       const candidate = candidates[indexCandidate];
+      logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) записываем курс`);
       const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
       const nextRate = candidate.rate + fixPerc;
       const oldRate = lot.rate;
+      logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка sim pay`);
       const isSimPay = simpay ? await telegram.isSkyPay(candidate.symbol as 'btc' | 'usdt', candidate.user.nickname) : !simpay;
+      logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка условий`);
       if (oldRate !== nextRate && isSimPay) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
         const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
