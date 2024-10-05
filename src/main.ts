@@ -12,7 +12,6 @@ import logger from './utils/logger.js';
 import { Worker } from 'node:worker_threads';
 import { pollingCurse, pollingDeals, pollingNotify, pollingPanik } from './utils/timer.js';
 import { fileURLToPath } from 'node:url';
-import telegramApi from './utils/telegram.js';
 import { delay, random } from './utils/dateTime.js';
 import { sendTgNotify } from './utils/paidMethod.js';
 
@@ -77,7 +76,7 @@ const listDelDeals: string[] = [];
 
 async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, telegram: Remote<WorkerTelegram>) {
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
-  const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub', lot_type: "sell" })})`;
+  const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub', lot_type: 'sell' })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
   if (!Array.isArray(lots)) return logger.warn(`Не найден список заявок в запросе`);
 
@@ -131,7 +130,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
         logger.log(`Заявка ${lot.id} уже была поставлена в проценты`);
         continue;
       }
-      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
+      const isSet = await telegram.setCurse(lot.id, nextRate, symbolLot);
       if (isSet) {
         await redis.setCandidateIs(lot.id, true);
         logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
@@ -152,7 +151,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка условий`);
       if (oldRate !== nextRate && isSimPay) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
+        const isSet = await telegram.setCurse(lot.id, nextRate, symbolLot);
         if (isSet) {
           await redis.setCandidateIs(lot.id, false);
           logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
@@ -166,7 +165,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
 
 async function getDeals(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
   logger.info(`Получение списка сделок`);
-  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit, lot_type: "sell" });
+  const params = (symbol: 'btc' | 'usdt', currency: 'rub', offset: number, limit: number) => ({ symbol, currency, offset, limit, lot_type: 'sell' });
   const code = (data: ReturnType<typeof params>) => `getDeals('[accessKey]','[authKey]', ${JSON.stringify(data)})`;
 
   const btcLimit = await redis.getConfig('POLLING_DEALS_LIMIT_BTC');
