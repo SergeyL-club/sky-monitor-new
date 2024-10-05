@@ -86,6 +86,8 @@ class WorkerTelegram {
         phoneCode: async () => '',
         onError: (err) => loggerTelegram.error(err),
       });
+      await this.getDialogBot('btc');
+      await this.getDialogBot('usdt');
       return true;
     } catch (error: unknown) {
       loggerTelegram.error(error);
@@ -132,160 +134,75 @@ class WorkerTelegram {
           const adsCurse = 'Курс';
           const adsNewCurse = 'Введите новый курс';
           const adsCurseFinish = 'Готово';
-          if (!this.client || !this.client.connected) {
-            this.reconnect()
-              .then((is) => {
-                if (!is) {
-                  if (cnt <= maxCnt) this.setCurse(adsId, curse, symbol, maxCnt, cnt + 1);
-                  else resolve(false);
-                } else
-                  this.getDialogBot(symbol)
-                    .then(() => {
-                      if (cnt <= maxCnt) this.setCurse(adsId, curse, symbol, maxCnt, cnt + 1);
-                      else resolve(false);
-                    })
-                    .catch((error: unknown) => {
-                      loggerTelegram.error(error);
-                      reject(error);
-                    });
-              })
-              .catch((error: unknown) => {
-                loggerTelegram.error(error);
-                reject(error);
-              });
-          } else {
-            const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
-            if (!botDialog)
-              this.getDialogBot(symbol)
-                .then(() => {
-                  if (cnt <= maxCnt) this.setCurse(adsId, curse, symbol, maxCnt, cnt + 1);
-                  else resolve(false);
-                })
-                .catch((error: unknown) => {
-                  loggerTelegram.error(error);
-                  reject(error);
-                });
-
-            const entity = botDialog?.entity;
-            if (entity)
-              this.client
-                .sendMessage(entity, { message: adsIdPath })
-                .then(async () => {
-                  const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
+          const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
+          if (!botDialog) resolve(false);
+          const entity = botDialog?.entity;
+          if (entity && this.client)
+            this.client
+              .sendMessage(entity, { message: adsIdPath })
+              .then(async () => {
+                const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
+                await delay(delayTg);
+                const lastMessagesAds = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+                if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(adsText)) {
+                  const btnLimit = (lastMessagesAds[0].replyMarkup as Api.ReplyInlineMarkup).rows
+                    .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(adsCurse)))
+                    ?.buttons.find((btn) => btn.text.includes(adsCurse)) as Api.KeyboardButtonCallback;
+                  await this.client!.invoke(
+                    new Api.messages.GetBotCallbackAnswer({
+                      peer: botDialog.entity,
+                      msgId: lastMessagesAds[0].id,
+                      data: btnLimit.data,
+                    }),
+                  );
                   await delay(delayTg);
-                  const lastMessagesAds = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-                  if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(adsText)) {
-                    const btnLimit = (lastMessagesAds[0].replyMarkup as Api.ReplyInlineMarkup).rows
-                      .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(adsCurse)))
-                      ?.buttons.find((btn) => btn.text.includes(adsCurse)) as Api.KeyboardButtonCallback;
-                    await this.client!.invoke(
-                      new Api.messages.GetBotCallbackAnswer({
-                        peer: botDialog.entity,
-                        msgId: lastMessagesAds[0].id,
-                        data: btnLimit.data,
-                      }),
-                    );
+                  const lastMessagesCurse = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+                  if (lastMessagesCurse.length > 0 && lastMessagesCurse[0].text.includes(adsNewCurse)) {
+                    await this.client!.sendMessage(botDialog.entity!, { message: `${curse}` });
                     await delay(delayTg);
-                    const lastMessagesCurse = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-                    if (lastMessagesCurse.length > 0 && lastMessagesCurse[0].text.includes(adsNewCurse)) {
-                      await this.client!.sendMessage(botDialog.entity!, { message: `${curse}` });
-                      await delay(delayTg);
-                      const lastMessagesOk = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-                      if (lastMessagesOk.length > 0 && (lastMessagesOk[0].text.includes(adsCurseFinish) || lastMessagesOk[0].text.includes(adsCurse))) {
-                        resolve(true);
-                      } else {
-                        resolve(false);
-                      }
+                    const lastMessagesOk = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+                    if (lastMessagesOk.length > 0 && (lastMessagesOk[0].text.includes(adsCurseFinish) || lastMessagesOk[0].text.includes(adsCurse))) {
+                      resolve(true);
                     } else {
                       resolve(false);
                     }
                   } else {
                     resolve(false);
                   }
-                })
-                .catch((error: unknown) => reject(error));
-            else
-              this.getDialogBot(symbol)
-                .then(() => {
-                  if (cnt <= maxCnt) this.setCurse(adsId, curse, symbol, maxCnt, cnt + 1);
-                  else resolve(false);
-                })
-                .catch((error: unknown) => {
-                  loggerTelegram.error(error);
-                  reject(error);
-                });
-          }
+                } else {
+                  resolve(false);
+                }
+              })
+              .catch((error: unknown) => reject(error));
+          else resolve(false);
         }),
     );
 
   isSkyPay = async (symbol: 'btc' | 'usdt', nickname: string, maxCnt = 3, cnt = 0) =>
     this.add(
       () =>
-        new Promise<boolean>((resolve, reject) => {
+        new Promise<boolean>((resolve) => {
           const isVerif = 'SKY PAY V1: ✅';
           const isNoVerif = 'SKY PAY V1: ❌';
           const user = `/u${nickname}`;
           console.log(user, '\n ---->');
-          if (!this.client || !this.client.connected) {
-            this.reconnect()
-              .then((is) => {
-                if (!is) {
-                  if (cnt <= maxCnt) this.isSkyPay(symbol, nickname, maxCnt, cnt + 1);
-                  else resolve(false);
-                } else
-                  this.getDialogBot(symbol)
-                    .then(() => {
-                      if (cnt <= maxCnt) this.isSkyPay(symbol, nickname, maxCnt, cnt + 1);
-                      else resolve(false);
-                    })
-                    .catch((error: unknown) => {
-                      loggerTelegram.error(error);
-                      reject(error);
-                    });
-              })
-              .catch((error: unknown) => {
-                loggerTelegram.error(error);
-                reject(error);
-              });
-          } else {
-            console.log(user, '\n ---->');
-            const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
-            if (!botDialog)
-              this.getDialogBot(symbol)
-                .then(() => {
-                  if (cnt <= maxCnt) this.isSkyPay(symbol, nickname, maxCnt, cnt + 1);
-                  else resolve(false);
-                })
-                .catch((error: unknown) => {
-                  loggerTelegram.error(error);
-                  reject(error);
-                });
-
-            const entity = botDialog?.entity;
-            if (entity)
-              this.client.sendMessage(entity, { message: user }).then(async () => {
-                console.log(user, '\n ---->');
-                const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
-                await delay(delayTg);
-                const lastMessagesAds = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-                console.log(user, '\n ---->');
-                if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isVerif)) {
-                  resolve(true);
-                } else if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isNoVerif)) {
-                  resolve(false);
-                } else resolve(false);
-              });
-            else
-              this.getDialogBot(symbol)
-                .then(() => {
-                  if (cnt <= maxCnt) this.isSkyPay(symbol, nickname, maxCnt, cnt + 1);
-                  else resolve(false);
-                })
-                .catch((error: unknown) => {
-                  loggerTelegram.error(error);
-                  reject(error);
-                });
-          }
+          const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
+          if (!botDialog) resolve(false);
+          const entity = botDialog?.entity;
+          if (entity && this.client)
+            this.client.sendMessage(entity, { message: user }).then(async () => {
+              console.log(user, '\n ---->');
+              const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
+              await delay(delayTg);
+              const lastMessagesAds = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+              console.log(user, '\n ---->');
+              if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isVerif)) {
+                resolve(true);
+              } else if (lastMessagesAds.length > 0 && lastMessagesAds[0].text.includes(isNoVerif)) {
+                resolve(false);
+              } else resolve(false);
+            });
+          else resolve(false);
         }),
     );
 }
