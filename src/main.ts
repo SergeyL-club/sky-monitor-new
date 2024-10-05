@@ -4,6 +4,7 @@ import type WorkerBrowser from './workers/browser.js';
 import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
 import type { CacheDeal, CacheNotify, DealGet, KeyOfConfig } from './workers/redis.js';
+import type WorkerTelegram from './workers/telegram.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
@@ -74,7 +75,7 @@ type Message = {
 
 const listDelDeals: string[] = [];
 
-async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>) {
+async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBrowser>, telegram: Remote<WorkerTelegram>) {
   const limitLots = (await redis.getConfig('POLLING_CURSE_LIMIT')) as number;
   const evaluteFuncLots = `getLots("[accessKey]", "[authKey]", ${JSON.stringify({ offset: 0, limit: limitLots, page: 1, currency: 'rub' })})`;
   const lots = (await browser.evalute({ code: evaluteFuncLots })) as Lot[] | null;
@@ -87,7 +88,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   const market = (symbol: string, broker: string, currency: string, page: number) =>
     `getMarkets("[accessKey]", "[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
-  const [verif, ignores, minPerc] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC'])) as [boolean, string[], number];
+  const [verif, ignores, minPerc, simpay] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'SIM_PAY_VERIFY'])) as [boolean, string[], number, boolean];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
     const lot = lots[indexLot];
@@ -139,19 +140,23 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       continue;
     }
 
-    const candidate = candidates[0];
-    const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
-    const nextRate = candidate.rate + fixPerc;
-    const oldRate = lot.rate;
-    if (oldRate !== nextRate) {
-      logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
-      const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
-      if (isSet) {
-        await redis.setCandidateIs(lot.id, false);
-        logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
-      } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
+    for (let indexCandidate = 0; indexCandidate < candidates.length; indexCandidate++) {
+      const candidate = candidates[indexCandidate];
+      const fixPerc = (await redis.getConfig(('CURSE_FIX' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
+      const nextRate = candidate.rate + fixPerc;
+      const oldRate = lot.rate;
+      const isSimPay = simpay ? await telegram.isSkyPay(candidate.symbol as 'btc' | 'usdt', candidate.user.nickname) : !simpay;
+      if (oldRate !== nextRate && isSimPay) {
+        logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
+        const isSet = await telegramApi.setAdsCurse(redis, lot.id, nextRate, symbolLot);
+        if (isSet) {
+          await redis.setCandidateIs(lot.id, false);
+          logger.info(`Заявка ${lot.id} курс изменен (${nextRate}), сохранение нового курса`);
+        } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
+        return logger.log(`Обработка заявки ${lot.id} завершена`);
+      }
     }
-    logger.log(`Обработка заявки ${lot.id} завершена`);
+    logger.log(`Не найдено кандидатов заявки ${lot.id}`);
   }
 }
 
@@ -297,12 +302,14 @@ const main = () =>
     const workerRedis = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/redis.js'));
     const workerBrowser = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/browser.js'));
     const workerServer = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/server.js'));
+    const workerTelegram = new Worker(path.resolve(dirname(fileURLToPath(import.meta.url)), './workers/telegram.js'));
 
     // adapters main
     logger.log(`Создание адаптеров`);
     const workerRedisAdapter = new MessageChannel();
     const workerBrowserAdapter = new MessageChannel();
     const workerServerAdapter = new MessageChannel();
+    const workerTelegramAdapter = new MessageChannel();
 
     // adapters other
     const workerRedisBrowserAdapter = new MessageChannel();
@@ -314,11 +321,14 @@ const main = () =>
     const workerBrowserServerAdapter = new MessageChannel();
     const workerServerBrowserAdapter = new MessageChannel();
 
+    const workerTelegramRedisAdapter = new MessageChannel();
+
     // connects main
     logger.log(`Подключение адаптеров (основные)`);
     workerRedis.postMessage({ command: 'connect', port: workerRedisAdapter.port2 }, [workerRedisAdapter.port2 as unknown as TransferListItem]);
     workerBrowser.postMessage({ command: 'connect', port: workerBrowserAdapter.port2 }, [workerBrowserAdapter.port2 as unknown as TransferListItem]);
     workerServer.postMessage({ command: 'connect', port: workerServerAdapter.port2 }, [workerServerAdapter.port2 as unknown as TransferListItem]);
+    workerTelegram.postMessage({ command: 'connect', port: workerTelegramAdapter.port2 }, [workerTelegramAdapter.port2 as unknown as TransferListItem]);
 
     // connects other
     logger.log(`Подключение адаптеров (redis - browser)`);
@@ -333,11 +343,15 @@ const main = () =>
     workerBrowser.postMessage({ command: 'connect', port: workerBrowserServerAdapter.port2 }, [workerBrowserServerAdapter.port2 as unknown as TransferListItem]);
     workerServer.postMessage({ command: 'connect', port: workerServerBrowserAdapter.port2 }, [workerServerBrowserAdapter.port2 as unknown as TransferListItem]);
 
+    logger.log(`Подключение адаптеров (telegram - redis)`);
+    workerRedis.postMessage({ command: 'connect', port: workerTelegramRedisAdapter.port2 }, [workerTelegramRedisAdapter.port2 as unknown as TransferListItem]);
+
     // exposes main
     logger.log(`Создание роутеров (основные)`);
     const redis = wrap<WorkerRedis>(workerRedisAdapter.port1);
     const browser = wrap<WorkerBrowser>(workerBrowserAdapter.port1);
     const server = wrap<WorkerServer>(workerServerAdapter.port1);
+    const telegram = wrap<WorkerTelegram>(workerTelegramAdapter.port1);
 
     // exposes other
     logger.log(`Создание роутеров (redis - browser)`);
@@ -352,18 +366,23 @@ const main = () =>
     workerBrowser.postMessage({ command: 'server', port: workerServerBrowserAdapter.port1 }, [workerServerBrowserAdapter.port1 as unknown as TransferListItem]);
     workerServer.postMessage({ command: 'borwser', port: workerBrowserServerAdapter.port1 }, [workerBrowserServerAdapter.port1 as unknown as TransferListItem]);
 
+    // telegram
+    logger.log(`Создание роутеров (telegram - redis)`);
+    workerTelegram.postMessage({ command: 'redis', port: workerTelegramRedisAdapter.port1 }, [workerTelegramRedisAdapter.port1 as unknown as TransferListItem]);
+
     // exit workers
     logger.log(`Создание callback для отключения потоков при выходе процесса`);
     process.on('exit', () => {
       workerBrowser.postMessage({ command: 'exit', code: 1 });
       workerServer.postMessage({ command: 'exit', code: 1 });
       workerRedis.postMessage({ command: 'exit', code: 1 });
+      workerTelegram.postMessage({ command: 'exit', code: 1 });
     });
 
     const next = async () => {
       browser.updateKeys();
       // loggerBrowser.info(`Успешное обновление ключей (первое), старт итераций`);
-      Promise.resolve(pollingCurse(redis, updateCurse.bind(null, redis, browser)));
+      Promise.resolve(pollingCurse(redis, updateCurse.bind(null, redis, browser, telegram)));
       Promise.resolve(pollingPanik(redis, panikDeal.bind(null, redis)));
       Promise.resolve(pollingDeals(redis, getDeals.bind(null, redis, browser)));
       Promise.resolve(pollingNotify(redis, getNotifys.bind(null, redis, browser)));

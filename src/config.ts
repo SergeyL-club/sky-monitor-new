@@ -65,6 +65,9 @@ export const DELAY_POLLING_NOTIFY: number = 10000;
 export const DELAY_NOTIFY: number = 1000;
 export const POLLING_NOTIFY_LIMIT: number = 20;
 
+// проверка сим пея
+export const SIM_PAY_VERIFY: boolean = false;
+
 // конфиг который меняется только от сюда и после перезагрузки (вы можете изменить через запрос, но данные будут браться от сюда)
 export const DATA_PATH_REDIS_CONFIG: string = `sky-monitor-new:configs`;
 export const DATA_PATH_REDIS_PANIK_DEALS: string = `sky-monitor-new:panik:deals`;

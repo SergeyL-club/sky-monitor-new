@@ -117,5 +117,6 @@ export const loggerCore = logger.child({ channel: 'CORE' });
 export const loggerBrowser = logger.child({ channel: 'BROWSER' });
 export const loggerServer = logger.child({ channel: 'SERVER' });
 export const loggerRedis = logger.child({ channel: 'REDIS' });
+export const loggerTelegram = logger.child({ channel: 'TELEGRAM' });
 
 export default loggerCore;
