@@ -148,7 +148,7 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
       const oldRate = lot.rate;
       logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка sim pay`);
       const isSimPay = simpay ? await telegram.isSkyPay(candidate.symbol as 'btc' | 'usdt', candidate.user.nickname) : !simpay;
-      logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка условий`);
+      logger.log(`Конкурент ${candidate.id} (${candidate.user.nickname}) проверка условий (${oldRate !== nextRate}{${oldRate}:${nextRate}}, ${isSimPay})`);
       if (oldRate !== nextRate && isSimPay) {
         logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
         const isSet = await telegram.setCurse(lot.id, nextRate, symbolLot);
