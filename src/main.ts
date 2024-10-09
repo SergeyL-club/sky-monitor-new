@@ -158,6 +158,11 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
         } else logger.warn(`Заявка ${lot.id} не удалось задать курс (${oldRate}, ${nextRate})`);
         return logger.log(`Обработка заявки ${lot.id} завершена`);
       }
+
+      if (oldRate === nextRate && isSimPay) {
+        logger.info(`Конкурент ${candidate.id} (${lot.id}) подходит по условиям и курс уже задан по нему`);
+        break;
+      }
     }
     logger.log(`Не найдено кандидатов заявки ${lot.id}`);
   }
