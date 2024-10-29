@@ -5,6 +5,7 @@ import type WorkerServer from './workers/server.js';
 import type { Remote } from 'comlink';
 import type { CacheDeal, CacheNotify, DealGet, KeyOfConfig } from './workers/redis.js';
 import type WorkerTelegram from './workers/telegram.js';
+import type { Ads } from './config.js';
 
 import path, { dirname } from 'path';
 import { wrap } from 'comlink';
@@ -87,7 +88,13 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
   const market = (symbol: string, broker: string, currency: string, page: number) =>
     `getMarkets("[accessKey]", "[authKey]", ${JSON.stringify({ lot_type: 'sell', symbol, broker, currency, page, limit: 25, offset: 0 })})`;
 
-  const [verif, ignores, minPerc, simpay] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'SIM_PAY_VERIFY'])) as [boolean, string[], number, boolean];
+  const [verif, ignores, minPerc, simpay, ads] = (await redis.getsConfig(['IS_VERIFIED', 'IGNORE_ADS_USER', 'CURSE_DEFAULT_MIN_PERC', 'SIM_PAY_VERIFY', 'PARAM_ADS'])) as [
+    boolean,
+    string[],
+    number,
+    boolean,
+    Ads[],
+  ];
   const [delayCurse, aRageDelayCurse] = (await redis.getsConfig(['CURSE_DELAY', 'CURSE_ARAGE_DELAY'])) as [number, number];
   for (let indexLot = 0; indexLot < lots.length; indexLot++) {
     const lot = lots[indexLot];
@@ -114,16 +121,17 @@ async function updateCurse(redis: Remote<WorkerRedis>, browser: Remote<WorkerBro
     logger.log(`Заявка ${lot.id}, фильтрация конкурентов по параметрам`);
     const symbolLot = lot.symbol === 'usdt' ? 'usdt' : 'btc';
     const minCurse = (await redis.getConfig(('CURSE_MIN' + `_${symbolLot.toUpperCase()}`) as KeyOfConfig)) as number;
+    const candidateAds = ads.find((ad) => ad.id === lot.id);
     const candidates = markets.filter((el) => {
       const isVerif = el.user.verified ?? !verif;
       const isLimit = el.limit_to >= lot.limit_from;
-      const isMinCurse = el.rate >= minCurse;
+      const isMinCurse = candidateAds ? el.rate >= Number(candidateAds[`min${symbolLot.toUpperCase()}` as keyof typeof candidateAds]) : el.rate >= minCurse;
       const isIgnore = !ignores.find((ignore) => ignore === `/u${el.user.nickname}`);
       return isIgnore && isVerif && isLimit && isMinCurse;
     });
 
     if (candidates.length === 0) {
-      const nextRate = minPerc + '%';
+      const nextRate = (candidateAds ? candidateAds.perc : minPerc) + '%';
       const oldRate = lot.rate;
       logger.info(`Заявка ${lot.id} изменение курса (${oldRate}, ${nextRate})`);
       if (await redis.getCandidateIs(lot.id)) {

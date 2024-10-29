@@ -1,6 +1,13 @@
 import type { WaitForOptions } from 'puppeteer';
 export type Channels = 'CORE' | 'BROWSER' | 'CALC';
 
+export interface Ads {
+  id: string;
+  perc: number;
+  minBtc: number;
+  minUsdt: number;
+}
+
 // конфиг telegram
 export const TG_SESSION_API: string =
   '1AgAOMTQ5LjE1NC4xNjcuNDEBu4jeq/onhol/UVqRWndECIervlNHBeAFE49l1OLHhe9+gtn67sSh4hEtyH62e0sZ8z9KGziBBVjNPF07Tv6Do3R6h/4hsskA0RGSgQf/8i7h03yNIlxxwSgYeFiE3vsqC/xtCm/n3tKkecK4to8IOFFrSmoxkPS+5xRW64qRgmPpI0Lf2VONHiKwqLrgv6YFdSlCfHCaXyLDmag1TEGxva89/LFWEVIck4wnB9Hqnv20yWDFpPf7806HQcgN6+3VZ4mfqUkyVPTQaBtU3ECEndQ2CRgxQK61svBPhelrF6eNKvwELl0/+ukQ9+PQRPRavdo78c0A+6o6q07rxSYMJcc=';
@@ -28,6 +35,7 @@ export const IGNORE_ADS_USER: string[] = [];
 export const CURSE_DEFAULT_MIN_PERC: number = 15;
 export const CURSE_FIX_BTC: number = 0;
 export const CURSE_FIX_USDT: number = 0;
+export const PARAM_ADS: Ads[] = [];
 
 // конфиг браузера
 export const WAIT_TIMEOUT: WaitForOptions['timeout'] = 30000; // ожидание ответа страницы или других загрузок
