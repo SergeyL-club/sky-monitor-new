@@ -124,6 +124,7 @@ const worker = new WorkerServer();
 
 worker.on('block-user', async (request, reply) => {
   const query: RequestBlockUser = request.query as RequestBlockUser;
+  loggerServer.info(`Запрос на блокировку пользователя ${query.user} (${query.symbol})`);
   const isBlock = await telegram?.blockUser(query.symbol, query.user);
   reply.status(200).send(JSON.stringify({ status: isBlock }));
 })

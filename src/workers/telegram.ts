@@ -182,38 +182,52 @@ class WorkerTelegram {
     () =>
       new Promise<boolean>((resolve) => {
         const user = `/u${nickname}`;
+        console.log(`Пользователь ${user}`);
         const btnBlockText = 'Заблокировать';
         const isBlockText = 'Разблокировать';
         const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
         if (!botDialog) resolve(false);
         const entity = botDialog?.entity;
         if (entity && this.client) {
+          console.log(`Отправляем сообщение`);
           this.client.sendMessage(entity, { message: user }).then(async () => {
-            const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
-            await delay(delayTg);
-            const lastMessages = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-            if (lastMessages.length > 0) {
-              const btnBlock = (lastMessages[0].replyMarkup as Api.ReplyInlineMarkup).rows
-                    .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(btnBlockText)))
-                    ?.buttons.find((btn) => btn.text.includes(btnBlockText)) as Api.KeyboardButtonCallback;
-              await this.client!.invoke(
-                new Api.messages.GetBotCallbackAnswer({
-                  peer: botDialog.entity,
-                  msgId: lastMessages[0].id,
-                  data: btnBlock.data,
-                }),
-              );
+            try {
+              console.log(`Успешно отправлено`);
+              const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
               await delay(delayTg);
-              const lastMessagesBlock = await this.client!.getMessages(botDialog.entity, { limit: 1 });
-              if (lastMessagesBlock.length > 0) {
-                const btnIsBlock = (lastMessagesBlock[0].replyMarkup as Api.ReplyInlineMarkup).rows
-                  .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(isBlockText)))
-                  ?.buttons.find((btn) => btn.text.includes(isBlockText)) as Api.KeyboardButtonCallback | undefined;
-                if (btnIsBlock) resolve(true);
-                else resolve(false);
-              }
+              const lastMessages = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+              console.log(lastMessages);
+              if (lastMessages.length > 0) {
+                console.log(`Получили сообщение`)
+                const btnBlock = (lastMessages[0].replyMarkup as Api.ReplyInlineMarkup).rows
+                      .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(btnBlockText)))
+                      ?.buttons.find((btn) => btn.text.includes(btnBlockText)) as Api.KeyboardButtonCallback;
+                await this.client!.invoke(
+                  new Api.messages.GetBotCallbackAnswer({
+                    peer: botDialog.entity,
+                    msgId: lastMessages[0].id,
+                    data: btnBlock.data,
+                  }),
+                );
+                console.log(btnBlock);
+                await delay(delayTg);
+                const lastMessagesBlock = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+                console.log(lastMessagesBlock);
+                if (lastMessagesBlock.length > 0) {
+                  console.log(`Получили сообщение`)
+                  const btnIsBlock = (lastMessagesBlock[0].replyMarkup as Api.ReplyInlineMarkup).rows
+                    .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(isBlockText)))
+                    ?.buttons.find((btn) => btn.text.includes(isBlockText)) as Api.KeyboardButtonCallback | undefined;
+                  console.log(btnIsBlock);
+                  if (btnIsBlock) resolve(true);
+                  else resolve(false);
+                }
+              }  
+            } catch (error: unknown) {
+              console.error(error)
+              resolve(false)
             }
-          })
+          }).catch(console.error)
         }
       })
   )
