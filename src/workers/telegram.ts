@@ -177,6 +177,46 @@ class WorkerTelegram {
           else resolve(false);
         }),
     );
+  
+  blockUser = async (symbol: 'btc' | 'usdt', nickname: string, maxCnt = 3, cnt = 0) => this.add(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const user = `/u${nickname}`;
+        const btnBlockText = 'Заблокировать';
+        const isBlockText = 'Разблокировать';
+        const botDialog = symbol === 'btc' ? this.botBtcDialog : this.botUsdtDialog;
+        if (!botDialog) resolve(false);
+        const entity = botDialog?.entity;
+        if (entity && this.client) {
+          this.client.sendMessage(entity, { message: user }).then(async () => {
+            const delayTg = (await redis!.getConfig('TG_DELAY_MESSAGE')) as number;
+            await delay(delayTg);
+            const lastMessages = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+            if (lastMessages.length > 0) {
+              const btnBlock = (lastMessages[0].replyMarkup as Api.ReplyInlineMarkup).rows
+                    .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(btnBlockText)))
+                    ?.buttons.find((btn) => btn.text.includes(btnBlockText)) as Api.KeyboardButtonCallback;
+              await this.client!.invoke(
+                new Api.messages.GetBotCallbackAnswer({
+                  peer: botDialog.entity,
+                  msgId: lastMessages[0].id,
+                  data: btnBlock.data,
+                }),
+              );
+              await delay(delayTg);
+              const lastMessagesBlock = await this.client!.getMessages(botDialog.entity, { limit: 1 });
+              if (lastMessagesBlock.length > 0) {
+                const btnIsBlock = (lastMessagesBlock[0].replyMarkup as Api.ReplyInlineMarkup).rows
+                  .find((btnArray) => btnArray.buttons.find((btn) => btn.text.includes(isBlockText)))
+                  ?.buttons.find((btn) => btn.text.includes(isBlockText)) as Api.KeyboardButtonCallback | undefined;
+                if (btnIsBlock) resolve(true);
+                else resolve(false);
+              }
+            }
+          })
+        }
+      })
+  )
 
   isSkyPay = async (symbol: 'btc' | 'usdt', nickname: string, maxCnt = 3, cnt = 0) =>
     this.add(

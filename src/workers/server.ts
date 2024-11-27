@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Remote } from 'comlink';
 import type WorkerRedis from './redis.js';
+import WorkerTelegram from './telegram.js';
 import type { KeyOfConfig, TypeOfConfig } from './redis.js';
 // import type WorkerBrowser from './browser.js';
 
@@ -16,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import fastifyFormbody from '@fastify/formbody';
 import fastifyCors from '@fastify/cors';
 
-type ServerCommands = 'browser' | 'redis' | 'exit' | 'connect';
-type Events = 'config-set' | 'config-get' | 'logs' | 'menu';
+type ServerCommands = 'browser' | 'telegram' | 'redis' | 'exit' | 'connect';
+type Events = 'config-set' | 'config-get' | 'logs' | 'menu' | 'block-user';
 
 type Callback = (request: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 type Listen = {
@@ -49,10 +50,17 @@ type RequestQueryMenu = {
   client?: boolean;
 };
 
-type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | RequestQueryGetLog | { command: undefined };
+type RequestBlockUser = {
+  command: 'block-user';
+  user: string;
+  symbol: 'btc' | 'usdt';
+};
+
+type RequestQuery = RequestQueryGetConfig | RequestQuerySetConfig | RequestQueryGetLog | RequestBlockUser | { command: undefined };
 
 // channels
 let redis: Remote<WorkerRedis> | null = null;
+let telegram: Remote<WorkerTelegram> | null = null;
 // let browser: Remote<WorkerBrowser> | null = null;
 
 class WorkerServer {
@@ -113,6 +121,12 @@ class WorkerServer {
 }
 
 const worker = new WorkerServer();
+
+worker.on('block-user', async (request, reply) => {
+  const query: RequestBlockUser = request.query as RequestBlockUser;
+  const isBlock = await telegram?.blockUser(query.symbol, query.user);
+  reply.status(200).send(JSON.stringify({ status: isBlock }));
+})
 
 worker.on('config-get', async (request, reply) => {
   const query: RequestQueryGetConfig = request.query as RequestQueryGetConfig;
@@ -255,6 +269,9 @@ parentPort?.on('message', async (message) => {
       case 'browser':
         // browser = wrap<WorkerBrowser>(message['port']);
         break;
+      case 'telegram':
+        telegram = wrap<WorkerTelegram>(message['port']);
+        break
       case 'connect':
         expose(worker, message['port']);
         break;

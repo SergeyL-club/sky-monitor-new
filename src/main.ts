@@ -338,6 +338,7 @@ const main = () =>
     const workerServerBrowserAdapter = new MessageChannel();
 
     const workerTelegramRedisAdapter = new MessageChannel();
+    const workerServerTelegramAdapter = new MessageChannel();
 
     // connects main
     logger.log(`Подключение адаптеров (основные)`);
@@ -358,6 +359,10 @@ const main = () =>
     logger.log(`Подключение адаптеров (server - browser)`);
     workerBrowser.postMessage({ command: 'connect', port: workerBrowserServerAdapter.port2 }, [workerBrowserServerAdapter.port2 as unknown as TransferListItem]);
     workerServer.postMessage({ command: 'connect', port: workerServerBrowserAdapter.port2 }, [workerServerBrowserAdapter.port2 as unknown as TransferListItem]);
+
+    logger.log(`Подключение адаптеров (server - telegram)`);
+    workerTelegram.postMessage({ command: 'connect', port: workerServerTelegramAdapter.port2 }, [workerServerTelegramAdapter.port2 as unknown as TransferListItem]);
+
 
     logger.log(`Подключение адаптеров (telegram - redis)`);
     workerRedis.postMessage({ command: 'connect', port: workerTelegramRedisAdapter.port2 }, [workerTelegramRedisAdapter.port2 as unknown as TransferListItem]);
@@ -381,6 +386,9 @@ const main = () =>
     logger.log(`Создание роутеров (server - browser)`);
     workerBrowser.postMessage({ command: 'server', port: workerServerBrowserAdapter.port1 }, [workerServerBrowserAdapter.port1 as unknown as TransferListItem]);
     workerServer.postMessage({ command: 'borwser', port: workerBrowserServerAdapter.port1 }, [workerBrowserServerAdapter.port1 as unknown as TransferListItem]);
+
+    logger.log(`Создание роутеров (server - telegram)`);
+    workerServer.postMessage({ command: 'telegram', port: workerServerTelegramAdapter.port1 }, [workerServerTelegramAdapter.port1 as unknown as TransferListItem]);
 
     // telegram
     logger.log(`Создание роутеров (telegram - redis)`);
